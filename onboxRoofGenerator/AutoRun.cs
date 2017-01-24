@@ -24,13 +24,15 @@ namespace onboxRoofGenerator
                 return Result.Failed;
             }
 
-            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element);
-            Element currentElement = doc.GetElement(currentReference.ElementId);
-            Edge currentEdge = Support.GetEdgeFromReference(currentReference, currentElement);
+            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new FootPrintRoofSelFilter(), "Selecione um telhado.");
 
-            EdgeInfo currentEdgeInfo = Support.GetEdgeInformation(doc, currentEdge, currentElement);
 
-            TaskDialog.Show("Edge", currentEdgeInfo.roofLineType.ToString());
+
+            //Element currentElement = doc.GetElement(currentReference.ElementId);
+            //Edge currentEdge = Support.GetEdgeFromReference(currentReference, currentElement);
+
+            //EdgeInfo currentEdgeInfo = Support.GetEdgeInformation(doc, currentEdge, currentElement);
+            //TaskDialog.Show("Edge", currentEdgeInfo.roofLineType.ToString());
 
             return Result.Succeeded;
         }
