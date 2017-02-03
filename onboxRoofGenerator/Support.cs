@@ -10,7 +10,8 @@ namespace onboxRoofGenerator
 {
     class Support
     {
-        static internal bool IsListOfPlanarFaces(IList<Reference> targetListOfReferences, Element currentElement, out IList<PlanarFace> targetListOfPlanarFaces)
+
+        static private bool IsListOfPlanarFaces(IList<Reference> targetListOfReferences, Element currentElement, out IList<PlanarFace> targetListOfPlanarFaces)
         {
             targetListOfPlanarFaces = new List<PlanarFace>();
             foreach (Reference currentReference in targetListOfReferences)
@@ -29,7 +30,7 @@ namespace onboxRoofGenerator
             return true;
         }
 
-        static internal Face GetFaceFromReference(Reference targetReference, Element targetElement)
+        static private Face GetFaceFromReference(Reference targetReference, Element targetElement)
         {
             Face currentFace = null;
             if (targetReference != null && targetElement != null)
@@ -45,7 +46,7 @@ namespace onboxRoofGenerator
             return currentFace;
         }
 
-        static internal Edge GetEdgeFromReference(Reference targetReference, Element targetElement)
+        static private Edge GetEdgeFromReference(Reference targetReference, Element targetElement)
         {
             Edge currentEdge = null;
             if (targetReference != null && targetElement != null)
@@ -61,7 +62,7 @@ namespace onboxRoofGenerator
             return currentEdge;
         }
 
-        static internal CurveLoop GetOuterCurveLoop(PlanarFace targetFace)
+        static private CurveLoop GetOuterCurveLoop(PlanarFace targetFace)
         {
             CurveLoop currentCurveLoop = new CurveLoop();
 
@@ -87,7 +88,7 @@ namespace onboxRoofGenerator
             return currentCurveLoop;
         }
 
-        static internal XYZ GetExtendedPoint(XYZ startPosition, PlanarFace targetPlanarFace, double amount = 0.1)
+        static private XYZ GetExtendedPoint(XYZ startPosition, PlanarFace targetPlanarFace, double amount = 0.1)
         {
             if (targetPlanarFace != null)
             {
@@ -171,7 +172,9 @@ namespace onboxRoofGenerator
                                     else
                                     {
                                         if (edgeCurve.GetEndPoint(0).Z.IsAlmostEqualTo(edgeCurve.GetEndPoint(1).Z))
+                                        {
                                             return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Ridge };
+                                        }
                                         else
                                         {
                                             return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
@@ -186,78 +189,68 @@ namespace onboxRoofGenerator
             return new EdgeInfo { edge = null, curve = targetCurve, roofLineType = RoofLineType.Undefined };
         }
 
-        static internal EdgeInfo GetEdgeInformation(Document doc, Edge selectedEdge, Element currentElement)
+        static internal IList<Edge> GetRidgeInfoList(Edge targetRidgeEdge, IList<EdgeInfo> targetEdgeInfoList)
         {
-            if (selectedEdge == null)
-                return new EdgeInfo { curve = null, edge = null, roofLineType = RoofLineType.Undefined };
-
-            Curve edgeCurve = selectedEdge.AsCurve();
-            PlanarFace currentPlanarFace = selectedEdge.GetFace(0) as PlanarFace;
-
-            if (currentPlanarFace == null)
-                return new EdgeInfo { curve = null, edge = null, roofLineType = RoofLineType.Undefined };
-
-            FootPrintRoof currentRoof = currentElement as FootPrintRoof;
-
-            if (currentRoof == null)
-                return new EdgeInfo { curve = null, edge = null, roofLineType = RoofLineType.Undefined };
-
-            IList<Reference> listOfReferences = HostObjectUtils.GetTopFaces(currentRoof);
-            listOfReferences = listOfReferences.Union(HostObjectUtils.GetBottomFaces(currentRoof)).ToList();
-            IList<PlanarFace> listOfPlanarFaces = new List<PlanarFace>();
-
-            if (!IsListOfPlanarFaces(listOfReferences, currentRoof, out listOfPlanarFaces))
-                return new EdgeInfo { curve = null, edge = null, roofLineType = RoofLineType.Undefined };
-
-            double firstPointHeight = edgeCurve.GetEndPoint(0).Z;
-            double secondPointHeight = edgeCurve.GetEndPoint(1).Z;
-            double planarFaceOrigin = currentPlanarFace.Origin.Z;
-
-            if (firstPointHeight.IsAlmostEqualTo(planarFaceOrigin) && secondPointHeight.IsAlmostEqualTo(planarFaceOrigin)) 
-                return new EdgeInfo { edge = selectedEdge, curve = edgeCurve, roofLineType = RoofLineType.Eave };
-
-            if (firstPointHeight.IsAlmostEqualTo(planarFaceOrigin) || secondPointHeight.IsAlmostEqualTo(planarFaceOrigin))
+            IList<Edge> resultingRidgeInfo = new List<Edge>();
+            foreach (EdgeInfo currentRidgeInfo in targetEdgeInfoList)
             {
-                PlanarFace firstFace = selectedEdge.GetFace(0) as PlanarFace;
-                PlanarFace secondFace = selectedEdge.GetFace(1) as PlanarFace;
-
-                if (!listOfPlanarFaces.Contains(firstFace) || !listOfPlanarFaces.Contains(secondFace))
+                if (currentRidgeInfo.roofLineType == RoofLineType.Eave)
                 {
-                    return new EdgeInfo { edge = selectedEdge, curve = edgeCurve, roofLineType = RoofLineType.Gable };
-                }
-                else
-                {
-                    if (GetOuterCurveLoop(firstFace).Count() == 3 || GetOuterCurveLoop(secondFace).Count() == 3)
+                    if (currentRidgeInfo.edge.GetFace(0) == targetRidgeEdge.GetFace(0) || currentRidgeInfo.edge.GetFace(0) == targetRidgeEdge.GetFace(1) ||
+                        currentRidgeInfo.edge.GetFace(1) == targetRidgeEdge.GetFace(0) || currentRidgeInfo.edge.GetFace(1) == targetRidgeEdge.GetFace(1))
                     {
-                        return new EdgeInfo { edge = selectedEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
-                    }
-                    else
-                    {
-                        XYZ startingPoint = edgeCurve.GetEndPoint(0).Z < edgeCurve.GetEndPoint(1).Z ? edgeCurve.GetEndPoint(0) : edgeCurve.GetEndPoint(1);
-
-                        XYZ extendedPoint = GetExtendedPoint(startingPoint, firstFace);
-                        XYZ rayTracePoint = new XYZ(extendedPoint.X, extendedPoint.Y, extendedPoint.Z + 999);
-
-                        ReferenceIntersector ReferenceIntersect = new ReferenceIntersector(currentRoof.Id, FindReferenceTarget.Element, (doc.ActiveView as View3D));
-                        ReferenceWithContext RefContext = ReferenceIntersect.FindNearest(rayTracePoint, XYZ.BasisZ.Negate());
-
-                        if (RefContext == null)
-                            return new EdgeInfo { edge = selectedEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
-
-                        return new EdgeInfo { edge = selectedEdge, curve = edgeCurve, roofLineType = RoofLineType.Valley };
-                    }
-
+                        resultingRidgeInfo.Add(currentRidgeInfo.edge);
+                    } 
                 }
             }
+            return resultingRidgeInfo;
+        }
+
+        static private IList<Curve> GetNonDuplicatedCurvesFromListOfFaces(IList<PlanarFace> targetPlanarFaceList)
+        {
+            IList<Curve> resultingNonDuplicatedCurves = new List<Curve>();
+            foreach (PlanarFace currentPlanarFace in targetPlanarFaceList)
+            {
+                foreach (Curve currentCurve in GetOuterCurveLoop(currentPlanarFace))
+                {
+                    if (resultingNonDuplicatedCurves.ContainsSimilarCurve(currentCurve))
+                        continue;
+
+                    resultingNonDuplicatedCurves.Add(currentCurve);
+                }
+            }
+            return resultingNonDuplicatedCurves;
+        }
+
+        static internal IList<EdgeInfo> GetRoofEdgeInfoList(FootPrintRoof currentRoof, bool topFaces = true)
+        {
+            IList<EdgeInfo> resultingEdgeInfoList = new List<EdgeInfo>();
+            IList<EdgeInfo> tempEdgeInfoList = new List<EdgeInfo>();
+
+            IList<Reference> currentListOfReferences = new List<Reference>();
+            if (topFaces)
+                currentListOfReferences = HostObjectUtils.GetTopFaces(currentRoof);
             else
+                currentListOfReferences = HostObjectUtils.GetBottomFaces(currentRoof);
+
+            IList<PlanarFace> currentListOfFaces = new List<PlanarFace>();
+            IsListOfPlanarFaces(currentListOfReferences, currentRoof, out currentListOfFaces);
+
+            IList<Curve> nonDuplicatedEdgeList = GetNonDuplicatedCurvesFromListOfFaces(currentListOfFaces);
+
+            foreach (Curve currentCurve in nonDuplicatedEdgeList)
             {
-                if (edgeCurve.GetEndPoint(0).Z.IsAlmostEqualTo(edgeCurve.GetEndPoint(1).Z))
-                    return new EdgeInfo { edge = selectedEdge, curve = edgeCurve, roofLineType = RoofLineType.Ridge };
-                else
-                {
-                    return new EdgeInfo { edge = selectedEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
-                }
+                tempEdgeInfoList.Add(GetCurveInformation(currentRoof, currentCurve, currentListOfFaces));
             }
+
+            foreach (EdgeInfo currentEdgeInfo in tempEdgeInfoList)
+            {
+                EdgeInfo newEdgeInfo = currentEdgeInfo;
+                newEdgeInfo.relatedRidgeEaves = GetRidgeInfoList(newEdgeInfo.edge, tempEdgeInfoList);
+                resultingEdgeInfoList.Add(newEdgeInfo);
+            }
+
+            return resultingEdgeInfoList;
         }
 
     }
