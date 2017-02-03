@@ -129,13 +129,15 @@ namespace onboxRoofGenerator
                         {
                             if (currentEdge != null)
                             {
+                                EdgeInfo currentEdgeInfo = new EdgeInfo();
                                 Curve edgeCurve = currentEdge.AsCurve();
                                 if (edgeCurve.IsAlmostEqualTo(targetCurve))
                                 {
                                     if (edgeCurve.GetEndPoint(0).Z.IsAlmostEqualTo(currentPlanarFace.Origin.Z) && edgeCurve.GetEndPoint(1).Z.IsAlmostEqualTo(currentPlanarFace.Origin.Z))
                                     {
-                                        return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Eave };
-
+                                        currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Eave };
+                                        currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                        return currentEdgeInfo;
                                     }
                                     else if (edgeCurve.GetEndPoint(0).Z.IsAlmostEqualTo(currentPlanarFace.Origin.Z) || edgeCurve.GetEndPoint(1).Z.IsAlmostEqualTo(currentPlanarFace.Origin.Z))
                                     {
@@ -144,13 +146,17 @@ namespace onboxRoofGenerator
 
                                         if (!targetPlanarFaceList.Contains(firstFace) || !targetPlanarFaceList.Contains(secondFace))
                                         {
-                                            return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Gable };
+                                            currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Gable };
+                                            currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                            return currentEdgeInfo;
                                         }
                                         else
                                         {
                                             if (GetOuterCurveLoop(firstFace).Count() == 3 || GetOuterCurveLoop(secondFace).Count() == 3)
                                             {
-                                                return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
+                                                currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
+                                                currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                                return currentEdgeInfo;
                                             }
                                             else
                                             {
@@ -163,9 +169,15 @@ namespace onboxRoofGenerator
                                                 ReferenceWithContext RefContext = ReferenceIntersect.FindNearest(rayTracePoint, XYZ.BasisZ.Negate());
 
                                                 if (RefContext == null)
-                                                    return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
-
-                                                return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Valley };
+                                                {
+                                                    currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
+                                                    currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                                    return currentEdgeInfo;
+                                                }
+                                                   
+                                                currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Valley };
+                                                currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                                return currentEdgeInfo;
                                             }
                                         }
                                     }
@@ -174,13 +186,21 @@ namespace onboxRoofGenerator
                                         if (edgeCurve.GetEndPoint(0).Z.IsAlmostEqualTo(edgeCurve.GetEndPoint(1).Z))
                                         {
                                             if (targetPlanarFaceList.Contains(currentEdge.GetFace(0)) && targetPlanarFaceList.Contains(currentEdge.GetFace(1)))
-                                                return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Ridge };
-                                            
-                                            return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.RidgeSinglePanel };
+                                            {
+                                                currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Ridge };
+                                                currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                                return currentEdgeInfo;
+                                            }
+                                               
+                                            currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.RidgeSinglePanel };
+                                            currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                            return currentEdgeInfo;
                                         }
                                         else
                                         {
-                                            return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
+                                            currentEdgeInfo = new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Hip };
+                                            currentEdgeInfo.relatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                            return currentEdgeInfo;
                                         }
                                     }
                                 }
@@ -255,6 +275,33 @@ namespace onboxRoofGenerator
 
             return resultingEdgeInfoList;
         }
+
+        static private IList<Face> GetEdgeRelatedPanels(Edge targetEdge, IList<PlanarFace> targetRoofPlanarFaces)
+        {
+            IList<Face> resultingListOfFaces = new List<Face>();
+            Face targetFace0 = targetEdge.GetFace(0);
+            Face targetFace1 = targetEdge.GetFace(1);
+
+            if (targetRoofPlanarFaces.Contains(targetFace0))
+                resultingListOfFaces.Add(targetFace0);
+            if (targetRoofPlanarFaces.Contains(targetFace1))
+                resultingListOfFaces.Add(targetFace1);
+
+            return resultingListOfFaces;
+        }
+
+        /// <summary>
+        /// This method assumes that the Truss will be symmetric (the roof has the same slopes in all panels)
+        /// </summary>
+        /// <returns></returns>
+        //static private XYZ TrussSupportLocation(EdgeInfo targetRidgeInfo, double distanceAlongRidge)
+        //{
+        //    if (targetRidgeInfo.roofLineType != RoofLineType.Ridge && targetRidgeInfo.roofLineType != RoofLineType.RidgeSinglePanel)
+        //        throw new Exception("EdgeInfo is not a Ridge");
+
+        //    if (targetRidgeInfo.edge.GetFace(0))
+
+        //}
 
     }
 }

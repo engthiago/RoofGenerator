@@ -15,12 +15,15 @@ namespace onboxRoofGenerator
         internal Edge edge;
         internal Curve curve;
         internal RoofLineType roofLineType;
+
         internal IList<Edge> relatedRidgeEaves;
+        internal IList<Face> relatedPanelFaces;
 
         public EdgeInfo()
         {
             roofLineType = RoofLineType.Undefined;
             relatedRidgeEaves = new List<Edge>();
+            relatedPanelFaces = new List<Face>();
         }
     }
 
