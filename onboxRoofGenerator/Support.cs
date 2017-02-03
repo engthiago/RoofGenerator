@@ -173,7 +173,10 @@ namespace onboxRoofGenerator
                                     {
                                         if (edgeCurve.GetEndPoint(0).Z.IsAlmostEqualTo(edgeCurve.GetEndPoint(1).Z))
                                         {
-                                            return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Ridge };
+                                            if (targetPlanarFaceList.Contains(currentEdge.GetFace(0)) && targetPlanarFaceList.Contains(currentEdge.GetFace(1)))
+                                                return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.Ridge };
+                                            
+                                            return new EdgeInfo { edge = currentEdge, curve = edgeCurve, roofLineType = RoofLineType.RidgeSinglePanel };
                                         }
                                         else
                                         {

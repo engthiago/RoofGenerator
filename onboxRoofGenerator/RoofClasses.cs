@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace onboxRoofGenerator
 {
-    enum RoofLineType { Hip, Ridge, Valley, Eave, Gable, Undefined };
+    enum RoofLineType { Hip, Ridge, RidgeSinglePanel, Valley, Eave, Gable, Undefined };
 
     class EdgeInfo
     {
