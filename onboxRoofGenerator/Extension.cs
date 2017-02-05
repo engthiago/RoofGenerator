@@ -19,11 +19,19 @@ namespace onboxRoofGenerator
                 XYZ secondCurveFirstPoint = secondCurve.GetEndPoint(0);
                 XYZ secondCurveSecondPoint = secondCurve.GetEndPoint(1);
 
-                if (firstCurveFirstPoint.IsAlmostEqualTo(secondCurveFirstPoint, 0.02) && firstCurveSecondPoint.IsAlmostEqualTo(secondCurveSecondPoint, 0.02) ||
-                    firstCurveFirstPoint.IsAlmostEqualTo(secondCurveSecondPoint, 0.02) && firstCurveSecondPoint.IsAlmostEqualTo(secondCurveFirstPoint, 0.02))
+                if (firstCurveFirstPoint.IsAlmostEqualTo(secondCurveFirstPoint) && firstCurveSecondPoint.IsAlmostEqualTo(secondCurveSecondPoint) ||
+                    firstCurveFirstPoint.IsAlmostEqualTo(secondCurveSecondPoint) && firstCurveSecondPoint.IsAlmostEqualTo(secondCurveFirstPoint))
                     return true;
             }
             return false;
+        }
+
+        static internal Line Flatten(this Line targetLine, double height = 0)
+        {
+            XYZ firstPoint = new XYZ(targetLine.GetEndPoint(0).X, targetLine.GetEndPoint(0).Y, height);
+            XYZ secondPoint = new XYZ(targetLine.GetEndPoint(1).X, targetLine.GetEndPoint(1).Y, height);
+
+            return Line.CreateBound(firstPoint, secondPoint);
         }
           
         static internal bool IsAlmostEqualTo(this double firstNumber, double secondNumber, double tolerance = 0.01)

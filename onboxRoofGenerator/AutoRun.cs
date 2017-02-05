@@ -39,59 +39,40 @@ namespace onboxRoofGenerator
                 return Result.Failed;
             }
 
-            IList<EdgeInfo> Ridges = currentRoofEdgeInfoList.Where(ed => ed.roofLineType == RoofLineType.Ridge || ed.roofLineType == RoofLineType.RidgeSinglePanel).ToList();
+            IList<EdgeInfo> Ridges = currentRoofEdgeInfoList.Where(ed => ed.RoofLineType == RoofLineType.Ridge || ed.RoofLineType == RoofLineType.RidgeSinglePanel).ToList();
 
-            //Element w = doc.GetElement(uidoc.Selection.PickObject(ObjectType.Element));
+            EdgeInfo currentRidge = Ridges[0];
 
-            //ICollection<ElementId> col = w.GetGeneratingElementIds(w.get_Geometry(new Options()));
-
-
-
-            //Element w = doc.GetElement(uidoc.Selection.PickObject(ObjectType.Element));
-
-            //ICollection<ElementId> joinedElements = new System.Collections.ObjectModel.Collection<ElementId>();
-            //GeometryElement geometryElement = w.get_Geometry(new Options());
-            //foreach (GeometryObject geometryObject in geometryElement)
-            //{
-            //    if (geometryObject is Solid)
-            //    {
-            //        Solid solid = geometryObject as Solid;
-            //        foreach (Face face in solid.Faces)
-            //        {
-            //            // for each face, find the other elements that generated the geometry of that face
-            //            ICollection<ElementId> generatingElementIds = w.GetGeneratingElementIds(face);
-
-            //            generatingElementIds.Remove(w.Id); // remove the originally selected wall, leaving only other elements joined to it
-            //            foreach (ElementId id in generatingElementIds)
-            //            {
-            //                if (!(joinedElements.Contains(id)))
-            //                    joinedElements.Add(id); // add each wall joined to this face to the overall collection 
-            //            }
-            //        }
-            //    }
-            //}
-
-            //uidoc.Selection.SetElementIds(joinedElements); // select all of the joined elements
-            //uidoc.RefreshActiveView();
-
-            using (Transaction t = new Transaction(doc, "Place bounding points"))
+            foreach (EdgeInfo currentEndCondition in currentRidge.GetEndConditions(1))
             {
-                t.Start();
-                foreach (EdgeInfo currentEdgeInfo in Ridges)
+                using (Transaction t = new Transaction(doc, "Place bounding points"))
                 {
+                    t.Start();
+                    TaskDialog.Show("Results", currentEndCondition.RoofLineType.ToString());
 
-                    XYZ currentPoint = currentEdgeInfo.edge.Evaluate(0.5);
-                    //foreach (Edge currentInternalEdge in currentEdgeInfo.relatedRidgeEaves)
-                    //{
-                    //    XYZ currentMidEave = currentInternalEdge.Evaluate(0.5);
-                    //    doc.Create.NewFamilyInstance(currentMidEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                    //}
-
+                    XYZ currentPoint = currentRidge.Curve.GetEndPoint(1);
+                    XYZ currenta = currentEndCondition.Curve.Evaluate(0.5, true);
                     doc.Create.NewFamilyInstance(currentPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-
+                    doc.Create.NewFamilyInstance(currenta, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    t.Commit();
                 }
-                t.Commit();
             }
+
+
+            //using (Transaction t = new Transaction(doc, "Place bounding points"))
+            //{
+            //    t.Start();
+            //    foreach (EdgeInfo currentEdgeInfo in Ridges)
+            //    {
+            //        XYZ currentPoint = currentEdgeInfo.ProjectRidgePointOnEave(2);
+            //        doc.Create.NewFamilyInstance(currentPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+            //        XYZ currentThirdPoint = currentEdgeInfo.ProjectRidgePointOnOverhang(2);
+            //        doc.Create.NewFamilyInstance(currentThirdPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+            //    }
+            //    t.Commit();
+            //}
 
 
             return Result.Succeeded;
