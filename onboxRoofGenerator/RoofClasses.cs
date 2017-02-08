@@ -13,7 +13,7 @@ namespace onboxRoofGenerator
 
     class EdgeInfo
     {
-        internal Edge Edge { get; set; }
+        internal IList<Edge> Edges { get; set; }
         internal Curve Curve { get; set; }
         internal RoofLineType RoofLineType { get; set; }
         internal FootPrintRoof CurrentRoof { get; set; }
@@ -47,8 +47,6 @@ namespace onboxRoofGenerator
             }
             return resultingEdgeInfo;
         }
-
-  
 
         internal XYZ ProjectRidgePointOnEave(double distanceAlongRidge)
         {
@@ -108,7 +106,7 @@ namespace onboxRoofGenerator
 
         internal IList<Face> GetRelatedPanels()
         {
-            return Support.GetEdgeRelatedPanels(Edge, CurrentRoof);
+            return Support.GetEdgeRelatedPanels(Edges[0], CurrentRoof);
         }
 
     }
