@@ -26,9 +26,9 @@ namespace onboxRoofGenerator
 
             Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new FootPrintRoofSelFilter(), "Selecione um telhado.");
             FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
-            
+
             //TODO if the footprint contains something other than lines (straight lines) warn the user and exit
-            
+
 
             FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
 
@@ -46,7 +46,7 @@ namespace onboxRoofGenerator
                 currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof);
                 t2.Commit();
             }
-            
+
 
             IList<EdgeInfo> Ridges = currentRoofEdgeInfoList.Where(ed => ed.RoofLineType == RoofLineType.Ridge || ed.RoofLineType == RoofLineType.RidgeSinglePanel).ToList();
 
@@ -117,6 +117,64 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
+    class DetectEavePoints : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
+
+            if ((uidoc.ActiveView as View3D) == null)
+            {
+                message = "Por favor, rode este comando em uma vista 3d";
+                return Result.Failed;
+            }
+
+            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new FootPrintRoofSelFilter(), "Selecione um telhado.");
+            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
+
+            IList<EdgeInfo> currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
+
+            using (Transaction t2 = new Transaction(doc, "Points"))
+            {
+                t2.Start();
+                foreach (EdgeInfo currentEdgeInfo in currentRoofEdgeInfoList)
+                {
+                    if (currentEdgeInfo.RoofLineType == RoofLineType.Ridge || currentEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel)
+                    {
+                        IList<XYZ> currentPoints = currentEdgeInfo.GetTopChords(2);
+                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                        foreach (XYZ currentPoint in currentPoints)
+                        {
+                            doc.Create.NewFamilyInstance(currentPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                        }
+                    }
+                }
+                t2.Commit();
+            }
+
+            //using (Transaction t2 = new Transaction(doc, "Points"))
+            //{
+            //    t2.Start();
+            //    FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+            //    doc.Create.NewFamilyInstance(currentInfo.Curve.GetEndPoint(0), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+            //    foreach (EdgeInfo currentCondi in conditions)
+            //    {
+            //        TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
+            //        PlanarFace pfce = currentCondi.GetRelatedPanels()[0] as PlanarFace;
+            //        Plane pl = new Plane(pfce.FaceNormal, pfce.Origin);
+            //        SketchPlane skp = SketchPlane.Create(doc, pl);
+            //        doc.Create.NewModelCurve(currentCondi.Curve, skp);
+            //    }
+            //    t2.Commit();
+            //}
+
+
+            return Result.Succeeded;
+        }
+    }
+
+    [Transaction(TransactionMode.Manual)]
     class DetectSingleEdge : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -130,7 +188,6 @@ namespace onboxRoofGenerator
                 return Result.Failed;
             }
 
-
             Reference currentReference = uidoc.Selection.PickObject(ObjectType.Edge);
             FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
             Edge edge = currentFootPrintRoof.GetGeometryObjectFromReference(currentReference) as Edge;
@@ -142,8 +199,31 @@ namespace onboxRoofGenerator
 
             TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
 
+            IList<EdgeInfo> conditions = currentInfo.GetEndConditions(0);
+
+            foreach (EdgeInfo currentCondi in conditions)
+            {
+                TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
+            }
+
+            //using (Transaction t2 = new Transaction(doc, "Points"))
+            //{
+            //    t2.Start();
+            //    FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+            //    doc.Create.NewFamilyInstance(currentInfo.Curve.GetEndPoint(0), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+            //    foreach (EdgeInfo currentCondi in conditions)
+            //    {
+            //        TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
+            //        PlanarFace pfce = currentCondi.GetRelatedPanels()[0] as PlanarFace;
+            //        Plane pl = new Plane(pfce.FaceNormal, pfce.Origin);
+            //        SketchPlane skp = SketchPlane.Create(doc, pl);
+            //        doc.Create.NewModelCurve(currentCondi.Curve, skp);
+            //    }
+            //    t2.Commit();
+            //}
+
+
             return Result.Succeeded;
         }
     }
-
 }

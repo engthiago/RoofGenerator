@@ -11,6 +11,18 @@ namespace onboxRoofGenerator
     class Support
     {
 
+        static internal bool HasSameSlopes(FootPrintRoof targetRoof)
+        {
+            //Get the slope of the entire roof
+            Parameter selectedRoofSlopeParameter = targetRoof.get_Parameter(BuiltInParameter.ROOF_SLOPE);
+            double selectedRoofSlope = selectedRoofSlopeParameter.AsDouble();
+
+            //Verify if the roof has all the same slopes
+            if (selectedRoofSlope <= 0) return false;
+            
+            return true;
+        }
+
         static internal bool IsListOfPlanarFaces(IList<Reference> targetListOfReferences, Element currentElement, out IList<PlanarFace> targetListOfPlanarFaces)
         {
             targetListOfPlanarFaces = new List<PlanarFace>();
@@ -134,6 +146,7 @@ namespace onboxRoofGenerator
                                 currentEdges.Add(currentEdge);
                                 EdgeInfo currentEdgeInfo = new EdgeInfo();
                                 Curve edgeCurve = currentEdge.AsCurve();
+
                                 if (edgeCurve.IsAlmostEqualTo(targetCurve))
                                 {
                                     if (edgeCurve.GetEndPoint(0).Z.IsAlmostEqualTo(currentPlanarFace.Origin.Z) && edgeCurve.GetEndPoint(1).Z.IsAlmostEqualTo(currentPlanarFace.Origin.Z))
@@ -194,10 +207,54 @@ namespace onboxRoofGenerator
                                                 currentEdgeInfo.RelatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
                                                 return currentEdgeInfo;
                                             }
+                                            else
+                                            {
+                                                PlanarFace firstFace = currentEdge.GetFace(0) as PlanarFace;
+                                                PlanarFace secondFace = currentEdge.GetFace(1) as PlanarFace;
 
-                                            currentEdgeInfo = new EdgeInfo { Edges = currentEdges, Curve = edgeCurve, RoofLineType = RoofLineType.RidgeSinglePanel, CurrentRoof = currentRoof };
-                                            currentEdgeInfo.RelatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
-                                            return currentEdgeInfo;
+                                                XYZ startingPoint = edgeCurve.Evaluate(0.5, true);
+                                                XYZ crossedDirection = Line.CreateBound(edgeCurve.GetEndPoint(0), edgeCurve.GetEndPoint(1)).Direction.CrossProduct(XYZ.BasisZ);
+                                                XYZ crossedPoint = startingPoint.Add(crossedDirection.Multiply(0.1));
+                                                XYZ rayTracePoint = new XYZ(crossedPoint.X, crossedPoint.Y, crossedPoint.Z + 999);
+
+                                                ReferenceIntersector ReferenceIntersect = new ReferenceIntersector(targetRoof.Id, FindReferenceTarget.Element, (targetRoof.Document.ActiveView as View3D));
+                                                ReferenceWithContext RefContext = ReferenceIntersect.FindNearest(rayTracePoint, XYZ.BasisZ.Negate());
+
+                                                bool isEave = true;
+                                                if (RefContext != null)
+                                                {
+                                                    if (RefContext.GetReference().GlobalPoint.Z < startingPoint.Z)
+                                                        isEave = false;
+                                                }
+                                                else
+                                                {
+                                                    crossedDirection = Line.CreateBound(edgeCurve.GetEndPoint(0), edgeCurve.GetEndPoint(1)).Direction.Negate().CrossProduct(XYZ.BasisZ);
+                                                    crossedPoint = startingPoint.Add(crossedDirection.Multiply(0.1));
+                                                    rayTracePoint = new XYZ(crossedPoint.X, crossedPoint.Y, crossedPoint.Z + 999);
+
+                                                    ReferenceIntersect = new ReferenceIntersector(targetRoof.Id, FindReferenceTarget.Element, (targetRoof.Document.ActiveView as View3D));
+                                                    RefContext = ReferenceIntersect.FindNearest(rayTracePoint, XYZ.BasisZ.Negate());
+
+                                                    if (RefContext != null)
+                                                    {
+                                                        if (RefContext.GetReference().GlobalPoint.Z < startingPoint.Z)
+                                                            isEave = false;
+                                                    }
+                                                }
+
+                                                if (isEave)
+                                                {
+                                                    currentEdgeInfo = new EdgeInfo { Edges = currentEdges, Curve = edgeCurve, RoofLineType = RoofLineType.Eave, CurrentRoof = currentRoof };
+                                                    currentEdgeInfo.RelatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                                    return currentEdgeInfo;
+                                                }
+                                                else
+                                                {
+                                                    currentEdgeInfo = new EdgeInfo { Edges = currentEdges, Curve = edgeCurve, RoofLineType = RoofLineType.RidgeSinglePanel, CurrentRoof = currentRoof };
+                                                    currentEdgeInfo.RelatedPanelFaces = GetEdgeRelatedPanels(currentEdge, targetPlanarFaceList);
+                                                    return currentEdgeInfo;
+                                                }
+                                            }
                                         }
                                         else
                                         {
@@ -290,17 +347,17 @@ namespace onboxRoofGenerator
 
             resultingEdgeInfoList = MergeEdgeCurves(resultingEdgeInfoList);
 
-            foreach (EdgeInfo currentEdgeInfo in resultingEdgeInfoList)
-            {
-                if (currentEdgeInfo.Edges.Count > 1)
-                    System.Diagnostics.Debug.WriteLine("Merged Edge");
+            //foreach (EdgeInfo currentEdgeInfo in resultingEdgeInfoList)
+            //{
+            //    if (currentEdgeInfo.Edges.Count > 1)
+            //        System.Diagnostics.Debug.WriteLine("Merged Edge");
 
-                Document doc = currentEdgeInfo.CurrentRoof.Document;
-                PlanarFace pfce = currentEdgeInfo.GetRelatedPanels()[0] as PlanarFace;
-                Plane pl = new Plane(pfce.FaceNormal, pfce.Origin);
-                SketchPlane skp = SketchPlane.Create(doc, pl);
-                doc.Create.NewModelCurve(currentEdgeInfo.Curve, skp);
-            }
+            //    Document doc = currentEdgeInfo.CurrentRoof.Document;
+            //    PlanarFace pfce = currentEdgeInfo.GetRelatedPanels()[0] as PlanarFace;
+            //    Plane pl = new Plane(pfce.FaceNormal, pfce.Origin);
+            //    SketchPlane skp = SketchPlane.Create(doc, pl);
+            //    doc.Create.NewModelCurve(currentEdgeInfo.Curve, skp);
+            //}
 
 
             return resultingEdgeInfoList;
@@ -394,7 +451,7 @@ namespace onboxRoofGenerator
 
                                     resultingListOfEdgeInfo.Remove(currentEdgeInfo);
                                     resultingListOfEdgeInfo.Remove(currentOtherEdgeInfo);
-                                    
+
                                     bool alreadyExists = false;
                                     foreach (EdgeInfo currentResultInfo in resultingListOfEdgeInfo)
                                     {
@@ -402,14 +459,14 @@ namespace onboxRoofGenerator
                                             alreadyExists = true;
                                     }
 
-                                    
+
                                     if (!alreadyExists)
                                     {
                                         IList<Edge> currentEdges = new List<Edge> { currentEdgeInfo.Edges[0], currentOtherEdgeInfo.Edges[0] };
                                         currentEdgeInfoNew.Edges = currentEdges;
                                         resultingListOfEdgeInfo.Add(currentEdgeInfoNew);
                                     }
-                                      
+
                                     //Document doc = currentEdgeInfo.CurrentRoof.Document;
                                     //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
                                     //doc.Create.NewFamilyInstance(currentIntersPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
