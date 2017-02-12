@@ -225,9 +225,8 @@ namespace onboxRoofGenerator
                 throw new Exception("Invalid number of support points for the truss");
 
             IList<XYZ> resultingPoints = new List<XYZ>();
-
             double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
-            XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
+
             ReferenceIntersector roofIntersector = new ReferenceIntersector(CurrentRoof.Id, FindReferenceTarget.Element, CurrentRoof.Document.ActiveView as View3D);
 
             foreach (XYZ currentSupportPoint in supportPoints)
@@ -247,6 +246,7 @@ namespace onboxRoofGenerator
                 {
                     if (Support.HasSameSlopes(CurrentRoof))
                     {
+                        XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
                         XYZ ridgePointFlaten = new XYZ(ridgePoint.X, ridgePoint.Y, resultingPoints[0].Z);
                         Line CrossedRidgeLine = Line.CreateBound(resultingPoints[0], ridgePointFlaten);
                         XYZ crossedDirection = CrossedRidgeLine.Direction;

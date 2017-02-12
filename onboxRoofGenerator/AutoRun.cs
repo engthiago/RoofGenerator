@@ -135,6 +135,8 @@ namespace onboxRoofGenerator
 
             IList<EdgeInfo> currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
 
+            //TODO check for roofs with single panel why is the ridge returning undefined when we pick the bottom faces
+
             using (Transaction t2 = new Transaction(doc, "Points"))
             {
                 t2.Start();
@@ -152,22 +154,6 @@ namespace onboxRoofGenerator
                 }
                 t2.Commit();
             }
-
-            //using (Transaction t2 = new Transaction(doc, "Points"))
-            //{
-            //    t2.Start();
-            //    FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-            //    doc.Create.NewFamilyInstance(currentInfo.Curve.GetEndPoint(0), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-            //    foreach (EdgeInfo currentCondi in conditions)
-            //    {
-            //        TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
-            //        PlanarFace pfce = currentCondi.GetRelatedPanels()[0] as PlanarFace;
-            //        Plane pl = new Plane(pfce.FaceNormal, pfce.Origin);
-            //        SketchPlane skp = SketchPlane.Create(doc, pl);
-            //        doc.Create.NewModelCurve(currentCondi.Curve, skp);
-            //    }
-            //    t2.Commit();
-            //}
 
 
             return Result.Succeeded;
@@ -193,18 +179,26 @@ namespace onboxRoofGenerator
             Edge edge = currentFootPrintRoof.GetGeometryObjectFromReference(currentReference) as Edge;
 
             IList<PlanarFace> pfaces = new List<PlanarFace>();
-            Support.IsListOfPlanarFaces(HostObjectUtils.GetTopFaces(currentFootPrintRoof), currentFootPrintRoof, out pfaces);
+            Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
+                , currentFootPrintRoof, out pfaces);
 
-            EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
-
-            TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
-
-            IList<EdgeInfo> conditions = currentInfo.GetEndConditions(0);
-
-            foreach (EdgeInfo currentCondi in conditions)
+            using (Transaction t2 = new Transaction(doc, "Points"))
             {
-                TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
+                t2.Start();
+                EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
+                TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
+
+                //IList<EdgeInfo> conditions = currentInfo.GetEndConditions(0);
+
+                //foreach (EdgeInfo currentCondi in conditions)
+                //{
+                //    TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
+                //}
+                t2.Commit();
             }
+
+
+
 
             //using (Transaction t2 = new Transaction(doc, "Points"))
             //{

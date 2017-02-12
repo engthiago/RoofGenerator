@@ -176,7 +176,7 @@ namespace onboxRoofGenerator
                                             }
                                             else
                                             {
-                                                XYZ startingPoint = edgeCurve.GetEndPoint(0).Z < edgeCurve.GetEndPoint(1).Z ? edgeCurve.GetEndPoint(0) : edgeCurve.GetEndPoint(1);
+                                                XYZ startingPoint = targetCurve.GetEndPoint(0).Z < targetCurve.GetEndPoint(1).Z ? targetCurve.GetEndPoint(0) : targetCurve.GetEndPoint(1);
 
                                                 XYZ extendedPoint = GetExtendedPoint(startingPoint, firstFace);
                                                 XYZ rayTracePoint = new XYZ(extendedPoint.X, extendedPoint.Y, extendedPoint.Z + 999);
@@ -214,31 +214,53 @@ namespace onboxRoofGenerator
 
                                                 XYZ startingPoint = edgeCurve.Evaluate(0.5, true);
                                                 XYZ crossedDirection = Line.CreateBound(edgeCurve.GetEndPoint(0), edgeCurve.GetEndPoint(1)).Direction.CrossProduct(XYZ.BasisZ);
-                                                XYZ crossedPoint = startingPoint.Add(crossedDirection.Multiply(0.1));
-                                                XYZ rayTracePoint = new XYZ(crossedPoint.X, crossedPoint.Y, crossedPoint.Z + 999);
+                                                XYZ crossedPointStart = startingPoint.Add(crossedDirection.Multiply(0.02));
+                                                XYZ crossedPointEnd = startingPoint.Add(crossedDirection.Multiply(0.1));
+                                                XYZ rayTracePointStart = new XYZ(crossedPointStart.X, crossedPointStart.Y, crossedPointStart.Z + 999);
+                                                XYZ rayTracePointEnd = new XYZ(crossedPointEnd.X, crossedPointEnd.Y, crossedPointEnd.Z + 999);
 
                                                 ReferenceIntersector ReferenceIntersect = new ReferenceIntersector(targetRoof.Id, FindReferenceTarget.Element, (targetRoof.Document.ActiveView as View3D));
-                                                ReferenceWithContext RefContext = ReferenceIntersect.FindNearest(rayTracePoint, XYZ.BasisZ.Negate());
+                                                ReferenceWithContext refStart = ReferenceIntersect.FindNearest(rayTracePointStart, XYZ.BasisZ.Negate());
+                                                ReferenceWithContext refEnd = ReferenceIntersect.FindNearest(rayTracePointEnd, XYZ.BasisZ.Negate());
 
                                                 bool isEave = true;
-                                                if (RefContext != null)
+                                                if (refEnd != null)
                                                 {
-                                                    if (RefContext.GetReference().GlobalPoint.Z < startingPoint.Z)
-                                                        isEave = false;
+                                                    if (refStart != null)
+                                                    {
+                                                        Document doc = currentRoof.Document;
+                                                        double refPointHeight = refEnd.GetReference().GlobalPoint.Z;
+                                                        double starPHeight = refStart.GetReference().GlobalPoint.Z;
+                                                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                                                        doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                        doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                        if (refEnd.GetReference().GlobalPoint.Z < refStart.GetReference().GlobalPoint.Z)
+                                                            isEave = false; 
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    crossedDirection = Line.CreateBound(edgeCurve.GetEndPoint(0), edgeCurve.GetEndPoint(1)).Direction.Negate().CrossProduct(XYZ.BasisZ);
-                                                    crossedPoint = startingPoint.Add(crossedDirection.Multiply(0.1));
-                                                    rayTracePoint = new XYZ(crossedPoint.X, crossedPoint.Y, crossedPoint.Z + 999);
+                                                    crossedPointStart = startingPoint.Add(crossedDirection.Multiply(-0.02));
+                                                    crossedPointEnd = startingPoint.Add(crossedDirection.Multiply(-0.1));
+                                                    rayTracePointStart = new XYZ(crossedPointStart.X, crossedPointStart.Y, crossedPointStart.Z + 999);
+                                                    rayTracePointEnd = new XYZ(crossedPointEnd.X, crossedPointEnd.Y, crossedPointEnd.Z + 999);
 
-                                                    ReferenceIntersect = new ReferenceIntersector(targetRoof.Id, FindReferenceTarget.Element, (targetRoof.Document.ActiveView as View3D));
-                                                    RefContext = ReferenceIntersect.FindNearest(rayTracePoint, XYZ.BasisZ.Negate());
+                                                    refStart = ReferenceIntersect.FindNearest(rayTracePointStart, XYZ.BasisZ.Negate());
+                                                    refEnd = ReferenceIntersect.FindNearest(rayTracePointEnd, XYZ.BasisZ.Negate());
 
-                                                    if (RefContext != null)
+                                                    if (refEnd != null)
                                                     {
-                                                        if (RefContext.GetReference().GlobalPoint.Z < startingPoint.Z)
-                                                            isEave = false;
+                                                        if (refStart != null)
+                                                        {
+                                                            Document doc = currentRoof.Document;
+                                                            double refPointHeight = refEnd.GetReference().GlobalPoint.Z;
+                                                            double starPHeight = refStart.GetReference().GlobalPoint.Z;
+                                                            FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                                                            doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                            doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                            if (refEnd.GetReference().GlobalPoint.Z < refStart.GetReference().GlobalPoint.Z)
+                                                                isEave = false; 
+                                                        }
                                                     }
                                                 }
 
