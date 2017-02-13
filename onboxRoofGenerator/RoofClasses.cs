@@ -49,64 +49,6 @@ namespace onboxRoofGenerator
             return resultingEdgeInfo;
         }
 
-        #region Deprecated
-        //internal XYZ ProjectRidgePointOnEave(double distanceAlongRidge)
-        //{
-        //    if (RoofLineType != RoofLineType.Ridge && RoofLineType != RoofLineType.RidgeSinglePanel)
-        //        throw new Exception("EdgeInfo is not a Ridge!");
-
-        //    ElementId LevelId = CurrentRoof.LevelId;
-        //    if (LevelId == null || LevelId == ElementId.InvalidElementId)
-        //        throw new Exception("Roof level not found!");
-
-        //    Level currentRoofLevel = CurrentRoof.Document.GetElement(LevelId) as Level;
-        //    Parameter currentRoofBaseOffsetParameter = CurrentRoof.get_Parameter(BuiltInParameter.ROOF_BASE_LEVEL_PARAM);
-
-        //    if (currentRoofBaseOffsetParameter == null)
-        //        throw new Exception("Roof level offset not found!");
-
-        //    double currentRoofBaseOffset = currentRoofBaseOffsetParameter.AsDouble();
-        //    double currentRoofTotalHeight = currentRoofLevel.ProjectElevation + currentRoofBaseOffset;
-
-        //    double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
-        //    XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
-
-        //    if (RelatedRidgeEaves.Count == 0)
-        //        throw new Exception("No ridge related eave was found!");
-
-        //    XYZ projectionPoint = null;
-
-        //    foreach (Edge currentEdge in RelatedRidgeEaves)
-        //    {
-        //        Line firstEaveLine = (currentEdge.AsCurve() as Line);
-        //        if (firstEaveLine == null) continue;
-
-        //        Line firstEaveLineFlatten = firstEaveLine.Flatten(currentRoofTotalHeight);
-        //        firstEaveLineFlatten.MakeUnbound();
-
-        //        IntersectionResult projectionResult = firstEaveLineFlatten.Project(ridgePoint);
-        //        if (projectionResult == null) continue;
-
-        //        projectionPoint = projectionResult.XYZPoint;
-        //        break;
-        //    }
-
-        //    if (projectionPoint == null) throw new Exception("No projection between ridge and eave could be stabilished!");
-
-        //    return projectionPoint;
-        //}
-
-        //internal XYZ ProjectRidgePointOnOverhang(double distanceAlongRidge)
-        //{
-        //    XYZ currentPointOnEave = ProjectRidgePointOnEave(distanceAlongRidge);
-        //    XYZ currentPointOnRidge = Curve.Evaluate(Curve.GetEndParameter(0) + distanceAlongRidge, false);
-
-        //    double dist = CurrentRoof.get_Overhang(CurrentRoof.GetProfiles().get_Item(0).get_Item(0));
-        //    Line l = Line.CreateBound(currentPointOnEave, currentPointOnRidge).Flatten(currentPointOnEave.Z);
-        //    return currentPointOnEave.Add(l.Direction.Multiply(dist));
-        //} 
-        #endregion
-
         internal XYZ GetTrussTopPoint(double distanceAlongRidge)
         {
             double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
@@ -160,11 +102,8 @@ namespace onboxRoofGenerator
 
             //We just need to get the side that the eave is to move the point to that direction
             //so we dont need to get a specific eave, lets just project the first one with infinite bounds to get the direction
-
-            //TODO optimise this!!!! We are going through the entire process of getting all EdgeInfo again
-            //The good thing is that this will not run too often
             if (RelatedRidgeEaves == null || RelatedRidgeEaves.Count == 0)
-                RelatedRidgeEaves = Support.GetRidgeInfoList(Edges[0], Support.GetRoofEdgeInfoList(CurrentRoof, false).Union(Support.GetRoofEdgeInfoList(CurrentRoof, true)).ToList());
+                RelatedRidgeEaves = GetRelatedEaves();
 
             if (RelatedRidgeEaves == null || RelatedRidgeEaves.Count == 0)
                 throw new Exception("Related eave or eaves to current singleRidge was not found");
@@ -359,10 +298,12 @@ namespace onboxRoofGenerator
             return Support.GetEdgeRelatedPanels(Edges[0], CurrentRoof);
         }
 
-        //internal IList<Edge> GetRelatedEaves()
-        //{
-
-        //}
+        internal IList<Edge> GetRelatedEaves()
+        {
+            //TODO optimise this!!!! We are going through the entire process of getting all EdgeInfo again
+            //The good thing is that this will not run too often
+            return Support.GetRidgeInfoList(Edges[0], Support.GetRoofEdgeInfoList(CurrentRoof, false).Union(Support.GetRoofEdgeInfoList(CurrentRoof, true)).ToList());
+        }
 
         private XYZ GetSupportPoint(XYZ overhangPoint, XYZ optionalDirection)
         {
