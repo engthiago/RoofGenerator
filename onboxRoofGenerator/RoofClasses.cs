@@ -137,7 +137,17 @@ namespace onboxRoofGenerator
             //We will get the point on the overhang because if we are working with a single panel ridge it may have overhangs
             XYZ pointOnSupport = GetSupportPoint(pointOnOverhang, null);
 
-            return pointOnSupport;
+            //Now we will shoot the point up on the Roof
+            XYZ startingPoint = new XYZ(pointOnSupport.X, pointOnSupport.Y, pointOnSupport.Z - 1);
+            ReferenceIntersector currentRefIntersect = new ReferenceIntersector(CurrentRoof.Id, FindReferenceTarget.Element, CurrentRoof.Document.ActiveView as View3D);
+            ReferenceWithContext currenRefContext = currentRefIntersect.FindNearest(startingPoint, XYZ.BasisZ);
+
+            if (currenRefContext == null)
+                return null;
+
+            XYZ projectedPointOnRoof = currenRefContext.GetReference().GlobalPoint;
+
+            return projectedPointOnRoof;
         }
 
         internal IList<XYZ> ProjectRidgePointOnEaves(double distanceAlongRidge)
@@ -379,7 +389,6 @@ namespace onboxRoofGenerator
 
             return currentRoofTotalHeight;
         }
-
 
     }
 
