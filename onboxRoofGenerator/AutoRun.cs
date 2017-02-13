@@ -43,7 +43,17 @@ namespace onboxRoofGenerator
             using (Transaction t2 = new Transaction(doc, "Points"))
             {
                 t2.Start();
-                currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof);
+                currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
+
+                foreach (EdgeInfo currentEdgeInfo in currentRoofEdgeInfoList)
+                {
+                    if (currentEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel || currentEdgeInfo.RoofLineType == RoofLineType.Ridge)
+                    {
+                        XYZ currentTP = currentEdgeInfo.GetTrussTopPoint(3);
+                        doc.Create.NewFamilyInstance(currentTP, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    }
+                }
+
                 t2.Commit();
             }
 
@@ -144,7 +154,7 @@ namespace onboxRoofGenerator
                 {
                     if (currentEdgeInfo.RoofLineType == RoofLineType.Ridge || currentEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel)
                     {
-                        IList<XYZ> currentPoints = currentEdgeInfo.GetTopChords(2);
+                        IList<XYZ> currentPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(3);
                         FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
                         foreach (XYZ currentPoint in currentPoints)
                         {
@@ -187,6 +197,10 @@ namespace onboxRoofGenerator
                 t2.Start();
                 EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
                 TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
+
+                XYZ topChordPoint = currentInfo.GetTrussTopPoint(3);
+                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                doc.Create.NewFamilyInstance(topChordPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 
                 //IList<EdgeInfo> conditions = currentInfo.GetEndConditions(0);
 

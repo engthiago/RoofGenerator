@@ -228,12 +228,12 @@ namespace onboxRoofGenerator
                                                 {
                                                     if (refStart != null)
                                                     {
-                                                        Document doc = currentRoof.Document;
-                                                        double refPointHeight = refEnd.GetReference().GlobalPoint.Z;
-                                                        double starPHeight = refStart.GetReference().GlobalPoint.Z;
-                                                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                                                        doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                                                        doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                        //Document doc = currentRoof.Document;
+                                                        //double refPointHeight = refEnd.GetReference().GlobalPoint.Z;
+                                                        //double starPHeight = refStart.GetReference().GlobalPoint.Z;
+                                                        //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                                                        //doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                        //doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                                                         if (refEnd.GetReference().GlobalPoint.Z < refStart.GetReference().GlobalPoint.Z)
                                                             isEave = false; 
                                                     }
@@ -252,12 +252,12 @@ namespace onboxRoofGenerator
                                                     {
                                                         if (refStart != null)
                                                         {
-                                                            Document doc = currentRoof.Document;
-                                                            double refPointHeight = refEnd.GetReference().GlobalPoint.Z;
-                                                            double starPHeight = refStart.GetReference().GlobalPoint.Z;
-                                                            FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                                                            doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                                                            doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                            //Document doc = currentRoof.Document;
+                                                            //double refPointHeight = refEnd.GetReference().GlobalPoint.Z;
+                                                            //double starPHeight = refStart.GetReference().GlobalPoint.Z;
+                                                            //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                                                            //doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                                                            //doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                                                             if (refEnd.GetReference().GlobalPoint.Z < refStart.GetReference().GlobalPoint.Z)
                                                                 isEave = false; 
                                                         }
@@ -320,7 +320,7 @@ namespace onboxRoofGenerator
             return resultingRidgeInfo;
         }
 
-        static private IList<Curve> GetNonDuplicatedCurvesFromListOfFaces(IList<PlanarFace> targetPlanarFaceList)
+        static internal IList<Curve> GetNonDuplicatedCurvesFromListOfFaces(IList<PlanarFace> targetPlanarFaceList)
         {
             IList<Curve> resultingNonDuplicatedCurves = new List<Curve>();
             foreach (PlanarFace currentPlanarFace in targetPlanarFaceList)

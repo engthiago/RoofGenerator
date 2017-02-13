@@ -107,6 +107,100 @@ namespace onboxRoofGenerator
         //} 
         #endregion
 
+        internal XYZ GetTrussTopPoint(double distanceAlongRidge)
+        {
+            double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
+            XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
+
+            if (RoofLineType == RoofLineType.Ridge)
+                return ridgePoint;
+            
+
+            //If the is not a Ridge this MUST be a SinglePanelRidge
+            if (RoofLineType != RoofLineType.RidgeSinglePanel)
+                throw new Exception("The ridge must be either single panel or regular rigde!");
+
+            Line currentRidgeLine = Curve.Clone() as Line;
+            if (currentRidgeLine == null)
+                throw new Exception("The ridge is not a straight line!");
+
+            ModelCurveArrArray sketchModels = CurrentRoof.GetProfiles();
+            double minDist = double.MaxValue;
+            ModelCurve targetEave = null;
+            XYZ projectedPoint = null;
+
+            double currentRoofTotalHeight = GetCurrentRoofHeight();
+            foreach (ModelCurveArray currentCurveArr in sketchModels)
+            {
+                foreach (ModelCurve currentCurve in currentCurveArr)
+                {
+                    Curve targetGeoCurve = currentCurve.GeometryCurve;
+                    Line targetGeoLine = targetGeoCurve as Line;
+
+                    if (targetGeoLine == null)
+                        throw new Exception("Eave is not a straight line");
+
+                    targetGeoLine = targetGeoLine.Flatten(currentRoofTotalHeight);
+
+                    double currentDist = targetGeoLine.Project(ridgePoint).Distance;
+                    if (currentDist < minDist)
+                    {
+                        minDist = currentDist;
+                        targetEave = currentCurve;
+                        projectedPoint = targetGeoLine.Project(ridgePoint).XYZPoint;
+                    }
+                }
+            }
+
+            double overHang = 0;
+            try { overHang = CurrentRoof.get_Overhang(targetEave); }
+            catch { overHang = CurrentRoof.get_Offset(targetEave); }
+
+            XYZ ridgePointFlatten = new XYZ(ridgePoint.X, ridgePoint.Y, currentRoofTotalHeight);
+
+            //We just need to get the side that the eave is to move the point to that direction
+            //so we dont need to get a specific eave, lets just project the first one with infinite bounds to get the direction
+
+            //TODO optimise this!!!! We are going through the entire process of getting all EdgeInfo again
+            //The good thing is that this will not run too often
+            if (RelatedRidgeEaves == null || RelatedRidgeEaves.Count == 0)
+                RelatedRidgeEaves = Support.GetRidgeInfoList(Edges[0], Support.GetRoofEdgeInfoList(CurrentRoof, false).Union(Support.GetRoofEdgeInfoList(CurrentRoof, true)).ToList());
+
+            if (RelatedRidgeEaves == null || RelatedRidgeEaves.Count == 0)
+                throw new Exception("Related eave or eaves to current singleRidge was not found");
+
+            ///////////////////////////////////////////////////////////////////////////////////////
+            #region This code can be extracted as a method to use in both this and the eave points
+
+            Curve eaveCurve = RelatedRidgeEaves[0].AsCurve();
+            if (eaveCurve as Line == null) throw new Exception("Related eave is not a straight line!");
+
+            Line eaveInfiniteLine = (eaveCurve as Line).Flatten(currentRoofTotalHeight);
+            eaveInfiniteLine.MakeUnbound();
+            XYZ crossedRidgeDirection = ridgePointFlatten.Add(currentRidgeLine.Flatten(currentRoofTotalHeight).Direction.CrossProduct(XYZ.BasisZ));
+            Line crossedRidgeInfitineLine = Line.CreateBound(ridgePointFlatten, crossedRidgeDirection.Multiply(1));
+            crossedRidgeInfitineLine.Flatten(currentRoofTotalHeight);
+            crossedRidgeInfitineLine.MakeUnbound();
+
+            IntersectionResultArray lineInterserctions = null;
+            eaveInfiniteLine.Intersect(crossedRidgeInfitineLine, out lineInterserctions);
+
+            if (lineInterserctions == null || lineInterserctions.Size > 1)
+                throw new Exception("Crossed ridge and eave intersection can not be obtained");
+
+            XYZ lineIntersectionPoint = lineInterserctions.get_Item(0).XYZPoint;
+            XYZ overHangdirection = Line.CreateBound(projectedPoint, lineIntersectionPoint).Direction.Normalize();
+
+            XYZ pointOnOverhang = projectedPoint.Add(overHangdirection.Multiply(overHang)); 
+
+            #endregion
+
+            //We will get the point on the overhang because if we are working with a single panel ridge it may have overhangs
+            XYZ pointOnSupport = GetSupportPoint(pointOnOverhang, null);
+
+            return pointOnSupport;
+        }
+
         internal IList<XYZ> ProjectRidgePointOnEaves(double distanceAlongRidge)
         {
 
@@ -127,6 +221,7 @@ namespace onboxRoofGenerator
             if (currentRidgeLine == null)
                 throw new Exception("The ridge is not a straight line!");
 
+            //TODO try to extract the this to use on get top truss point
             XYZ crossedDirection = currentRidgeLine.Direction.CrossProduct(XYZ.BasisZ);
             Line CrossedRidgeLine = Line.CreateBound(ridgePoint, crossedDirection.Add(ridgePoint)).Flatten(currentRoofTotalHeight);
             Line CrossedRidgeLineFlatten = (CrossedRidgeLine.Clone() as Line);
@@ -158,7 +253,7 @@ namespace onboxRoofGenerator
 
         }
 
-        internal IList<XYZ> ProjectRidgePointsOnOverhang(double distanceAlongRidge)
+        internal IList<XYZ> GetEavePointsOnOverhang(double distanceAlongRidge)
         {
             IList<XYZ> ProjectedPoints = new List<XYZ>();
             XYZ currentPointOnRidge = Curve.Evaluate(Curve.GetEndParameter(0) + distanceAlongRidge, false);
@@ -205,9 +300,9 @@ namespace onboxRoofGenerator
             return ProjectedPoints;
         }
 
-        internal IList<XYZ> ProjetRidgePointsOnSupports(double distanceAlongRidge)
+        internal IList<XYZ> GetEavePointsOnSupports(double distanceAlongRidge)
         {
-            IList<XYZ> overhangPoints = ProjectRidgePointsOnOverhang(distanceAlongRidge);
+            IList<XYZ> overhangPoints = GetEavePointsOnOverhang(distanceAlongRidge);
             IList<XYZ> projectedPoints = new List<XYZ>();
             foreach (XYZ currentPoint in overhangPoints)
             {
@@ -217,9 +312,9 @@ namespace onboxRoofGenerator
             return projectedPoints;
         }
 
-        internal IList<XYZ> GetTopChords(double distanceAlongRidge)
+        internal IList<XYZ> ProjectSupportPointsOnRoof(double distanceAlongRidge)
         {
-            IList<XYZ> supportPoints = ProjetRidgePointsOnSupports(distanceAlongRidge);
+            IList<XYZ> supportPoints = GetEavePointsOnSupports(distanceAlongRidge);
 
             if (supportPoints.Count < 1 || supportPoints.Count > 2)
                 throw new Exception("Invalid number of support points for the truss");
@@ -263,6 +358,11 @@ namespace onboxRoofGenerator
         {
             return Support.GetEdgeRelatedPanels(Edges[0], CurrentRoof);
         }
+
+        //internal IList<Edge> GetRelatedEaves()
+        //{
+
+        //}
 
         private XYZ GetSupportPoint(XYZ overhangPoint, XYZ optionalDirection)
         {
