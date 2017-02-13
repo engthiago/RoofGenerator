@@ -49,8 +49,11 @@ namespace onboxRoofGenerator
                 {
                     if (currentEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel || currentEdgeInfo.RoofLineType == RoofLineType.Ridge)
                     {
-                        XYZ currentTP = currentEdgeInfo.GetTrussTopPoint(3);
-                        doc.Create.NewFamilyInstance(currentTP, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                        CurveArray c1 = null;
+                        CurveArray c2 = null;
+                        currentEdgeInfo.CanBuildTrussAtRidge(3, out c1, out c2);
+
+
                     }
                 }
 

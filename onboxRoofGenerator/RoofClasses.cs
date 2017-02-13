@@ -96,7 +96,7 @@ namespace onboxRoofGenerator
 
             double overHang = 0;
             try { overHang = CurrentRoof.get_Overhang(targetEave); }
-            catch { overHang = CurrentRoof.get_Offset(targetEave); }
+            catch {  }
 
             XYZ ridgePointFlatten = new XYZ(ridgePoint.X, ridgePoint.Y, currentRoofTotalHeight);
 
@@ -135,7 +135,7 @@ namespace onboxRoofGenerator
             #endregion
 
             //We will get the point on the overhang because if we are working with a single panel ridge it may have overhangs
-            XYZ pointOnSupport = GetSupportPoint(pointOnOverhang, null);
+            XYZ pointOnSupport = GetSupportPoint(pointOnOverhang, currentRidgeLine.Direction.Normalize());
 
             //Now we will shoot the point up on the Roof
             XYZ startingPoint = new XYZ(pointOnSupport.X, pointOnSupport.Y, pointOnSupport.Z - 1);
@@ -239,7 +239,7 @@ namespace onboxRoofGenerator
 
                 double overHang = 0;
                 try { overHang = CurrentRoof.get_Overhang(targetEave); }
-                catch { overHang = CurrentRoof.get_Offset(targetEave); }
+                catch { }
 
                 currentPointOnRidge = new XYZ(currentPointOnRidge.X, currentPointOnRidge.Y, currentRoofTotalHeight);
                 Line l = Line.CreateBound(projectedPoint, currentPointOnRidge);
@@ -255,7 +255,10 @@ namespace onboxRoofGenerator
             IList<XYZ> projectedPoints = new List<XYZ>();
             foreach (XYZ currentPoint in overhangPoints)
             {
-                XYZ currentProjectedPoint = GetSupportPoint(currentPoint, null);
+                Line l = Curve as Line;
+                if (l == null)
+                    throw new Exception("CurrentEdge is not a straight line!");
+                XYZ currentProjectedPoint = GetSupportPoint(currentPoint, l.Direction.Normalize());
                 projectedPoints.Add(currentProjectedPoint);
             }
             return projectedPoints;
@@ -346,7 +349,7 @@ namespace onboxRoofGenerator
                     if (currentCurve as Line == null) continue;
                     double currentAngle = (currentCurve as Line).Direction.Normalize().AngleTo(optionalDirection);
 
-                    if (!currentAngle.IsAlmostEqualTo(0, 0.05) || !currentAngle.IsAlmostEqualTo(Math.PI, 0.05) || !currentAngle.IsAlmostEqualTo(2 * Math.PI, 0.05))
+                    if (!currentAngle.IsAlmostEqualTo(0, 0.05) && !currentAngle.IsAlmostEqualTo(Math.PI, 0.05) && !currentAngle.IsAlmostEqualTo(2 * Math.PI, 0.05))
                         continue;
                 }
 
@@ -388,6 +391,55 @@ namespace onboxRoofGenerator
             double currentRoofTotalHeight = currentRoofLevel.ProjectElevation + currentRoofBaseOffset;
 
             return currentRoofTotalHeight;
+        }
+
+        internal bool CanBuildTrussAtRidge(double distanceAlongRidge, out CurveArray topChords, out CurveArray bottomChords)
+        {
+            topChords = null;
+            bottomChords = null;
+
+            XYZ currentTopPoint = GetTrussTopPoint(distanceAlongRidge);
+            //If we cant get the point that means that the projection failed
+            if (currentTopPoint == null)
+                return false;
+
+            IList<XYZ> currentSupportPoints = ProjectSupportPointsOnRoof(distanceAlongRidge);
+            if (currentSupportPoints.Count == 0)
+                return false;
+
+            if (currentSupportPoints.Count == 1)
+            {
+
+                if (RoofLineType != RoofLineType.RidgeSinglePanel)
+                    return false;
+
+                XYZ projectedPointOnEave = currentSupportPoints[0];
+                XYZ projectedPointOnRidge = new XYZ(currentTopPoint.X, currentTopPoint.Y, projectedPointOnEave.Z);
+
+                Document doc = CurrentRoof.Document;
+                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                doc.Create.NewFamilyInstance(projectedPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                doc.Create.NewFamilyInstance(projectedPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+            }
+            else if (currentSupportPoints.Count == 2)
+            {
+                if (RoofLineType != RoofLineType.Ridge)
+                    return false;
+
+                XYZ firstPointOnEave = currentSupportPoints[0];
+                XYZ secondPointOnEave = currentSupportPoints[1];
+
+                Document doc = CurrentRoof.Document;
+                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                doc.Create.NewFamilyInstance(firstPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                doc.Create.NewFamilyInstance(secondPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+            }
+
+            return false;
         }
 
     }
