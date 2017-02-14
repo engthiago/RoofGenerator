@@ -11,6 +11,22 @@ namespace onboxRoofGenerator
 {
     enum RoofLineType { Hip, Ridge, RidgeSinglePanel, Valley, Eave, Gable, Undefined };
 
+
+    class TrussInfo
+    {
+        internal XYZ FirstPoint { get; set; }
+        internal XYZ SecondPoint { get; set; }
+        internal double Height { get; set; }
+
+        public TrussInfo(XYZ firstPoint, XYZ secondPoint, double height)
+        {
+            FirstPoint = firstPoint;
+            SecondPoint = secondPoint;
+            Height = height;
+        }
+    }
+
+
     //TODO create child class of this one, to handle Ridges and merged Gables and other specific functions
     class EdgeInfo
     {
@@ -196,7 +212,14 @@ namespace onboxRoofGenerator
 
             }
 
-            if (projectionPoints == null || projectionPoints.Count == 0) throw new Exception("No projection between ridge and eave could be stabilished!");
+            if (projectionPoints == null || projectionPoints.Count == 0)
+            {
+                //Document doc = CurrentRoof.Document;
+                //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                //doc.Create.NewFamilyInstance(Edges[0].Evaluate(0.5), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+                //throw new Exception("No projection between ridge and eave could be stabilished!");
+            }
 
             return projectionPoints;
 
@@ -268,8 +291,8 @@ namespace onboxRoofGenerator
         {
             IList<XYZ> supportPoints = GetEavePointsOnSupports(distanceAlongRidge);
 
-            if (supportPoints.Count < 1 || supportPoints.Count > 2)
-                throw new Exception("Invalid number of support points for the truss");
+            //if (supportPoints.Count < 1 || supportPoints.Count > 2)
+            //    throw new Exception("Invalid number of support points for the truss");
 
             IList<XYZ> resultingPoints = new List<XYZ>();
             double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
@@ -375,7 +398,7 @@ namespace onboxRoofGenerator
             return new XYZ(projetctedPoint.X, projetctedPoint.Y, totalRoofHeight);
         }
 
-        private double GetCurrentRoofHeight()
+        internal double GetCurrentRoofHeight()
         {
             ElementId LevelId = CurrentRoof.LevelId;
             if (LevelId == null || LevelId == ElementId.InvalidElementId)
@@ -393,10 +416,11 @@ namespace onboxRoofGenerator
             return currentRoofTotalHeight;
         }
 
-        internal bool CanBuildTrussAtRidge(double distanceAlongRidge, out CurveArray topChords, out CurveArray bottomChords)
+        internal bool CanBuildTrussAtRidge(double distanceAlongRidge, out TrussInfo trussInfo, out CurveArray topChords, out CurveArray bottomChords)
         {
-            topChords = null;
-            bottomChords = null;
+            topChords = new CurveArray();
+            bottomChords = new CurveArray();
+            trussInfo = null;
 
             XYZ currentTopPoint = GetTrussTopPoint(distanceAlongRidge);
             //If we cant get the point that means that the projection failed
@@ -416,11 +440,19 @@ namespace onboxRoofGenerator
                 XYZ projectedPointOnEave = currentSupportPoints[0];
                 XYZ projectedPointOnRidge = new XYZ(currentTopPoint.X, currentTopPoint.Y, projectedPointOnEave.Z);
 
-                Document doc = CurrentRoof.Document;
-                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                doc.Create.NewFamilyInstance(projectedPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                doc.Create.NewFamilyInstance(projectedPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                topChords.Append(Line.CreateBound(currentTopPoint, projectedPointOnEave));
+                bottomChords.Append(Line.CreateBound(projectedPointOnRidge, projectedPointOnEave));
+                double height = currentTopPoint.DistanceTo(projectedPointOnRidge);
+
+                trussInfo = new TrussInfo(projectedPointOnEave, projectedPointOnRidge, height);
+
+                //Document doc = CurrentRoof.Document;
+                //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                //doc.Create.NewFamilyInstance(projectedPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                //doc.Create.NewFamilyInstance(projectedPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                //doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+                return true;
 
             }
             else if (currentSupportPoints.Count == 2)
@@ -431,11 +463,20 @@ namespace onboxRoofGenerator
                 XYZ firstPointOnEave = currentSupportPoints[0];
                 XYZ secondPointOnEave = currentSupportPoints[1];
 
-                Document doc = CurrentRoof.Document;
-                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                doc.Create.NewFamilyInstance(firstPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                doc.Create.NewFamilyInstance(secondPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                topChords.Append(Line.CreateBound(currentTopPoint, firstPointOnEave));
+                topChords.Append(Line.CreateBound(currentTopPoint, secondPointOnEave));
+                bottomChords.Append(Line.CreateBound(firstPointOnEave, secondPointOnEave));
+                double height = currentTopPoint.DistanceTo(new XYZ(currentTopPoint.X, currentTopPoint.Y, firstPointOnEave.Z));
+
+                trussInfo = new TrussInfo(firstPointOnEave, secondPointOnEave, height);
+
+                //Document doc = CurrentRoof.Document;
+                //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                //doc.Create.NewFamilyInstance(firstPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                //doc.Create.NewFamilyInstance(secondPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                //doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+                return true;
 
             }
 

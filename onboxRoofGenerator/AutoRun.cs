@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Structure;
 
 namespace onboxRoofGenerator
 {
@@ -45,15 +46,39 @@ namespace onboxRoofGenerator
                 t2.Start();
                 currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
 
+                Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
+                TrussType tType = tTypeElement as TrussType;
+
                 foreach (EdgeInfo currentEdgeInfo in currentRoofEdgeInfoList)
                 {
                     if (currentEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel || currentEdgeInfo.RoofLineType == RoofLineType.Ridge)
                     {
-                        CurveArray c1 = null;
-                        CurveArray c2 = null;
-                        currentEdgeInfo.CanBuildTrussAtRidge(3, out c1, out c2);
+                        double distance = 0;
+                        int numPoints = 0;
+                        EstabilishIteractionPoints(currentEdgeInfo.Curve, 8.22, out numPoints, out distance);
 
 
+                        for (int i = 0; i <= numPoints; i++)
+                        {
+                            CurveArray c1 = null;
+                            CurveArray c2 = null;
+                            TrussInfo currentTrussInfo = null;
+                            double currentParam = i * distance;
+
+                            if (currentEdgeInfo.CanBuildTrussAtRidge(currentParam, out currentTrussInfo, out c1, out c2))
+                            {
+                                SketchPlane stkP = SketchPlane.Create(doc, currentEdgeInfo.CurrentRoof.LevelId);
+
+                                double levelHeight = currentEdgeInfo.GetCurrentRoofHeight();
+
+                                XYZ firstPoint = new XYZ(currentTrussInfo.FirstPoint.X, currentTrussInfo.FirstPoint.Y, levelHeight);
+                                XYZ secondPoint = new XYZ(currentTrussInfo.SecondPoint.X, currentTrussInfo.SecondPoint.Y, levelHeight);
+                                Truss currentTruss = Truss.Create(doc, tType.Id, stkP.Id, Line.CreateBound(firstPoint, secondPoint));
+
+                                currentTruss.get_Parameter(BuiltInParameter.TRUSS_HEIGHT).Set(currentTrussInfo.Height);
+
+                            }
+                        }
                     }
                 }
 
@@ -101,6 +126,18 @@ namespace onboxRoofGenerator
 
 
             return Result.Succeeded;
+        }
+
+        private void EstabilishIteractionPoints(Curve currentCurve, double maxPointDistInFeet, out int numberOfInteractions, out double increaseAmount)
+        {
+            double currentCurveLength = currentCurve.ApproximateLength;
+
+            if (maxPointDistInFeet > currentCurveLength)
+                numberOfInteractions = 1;
+            else
+                numberOfInteractions = (int)(Math.Ceiling(currentCurveLength / maxPointDistInFeet));
+
+            increaseAmount = currentCurveLength / numberOfInteractions;
         }
     }
 
