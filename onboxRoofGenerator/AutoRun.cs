@@ -30,15 +30,6 @@ namespace onboxRoofGenerator
 
             //TODO if the footprint contains something other than lines (straight lines) warn the user and exit
 
-
-            FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-
-            if (fs == null)
-            {
-                message = "The family type to place the points were not found, please open the sample file or copy the family to this project";
-                return Result.Failed;
-            }
-
             IList<EdgeInfo> currentRoofEdgeInfoList = new List<EdgeInfo>();
 
             using (Transaction t2 = new Transaction(doc, "Points"))
@@ -142,31 +133,6 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
-    class TwoLine : IExternalCommand
-    {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-        {
-
-            UIDocument uidoc = commandData.Application.ActiveUIDocument;
-            Document doc = uidoc.Document;
-            Selection sel = uidoc.Selection;
-
-            Element el1 = doc.GetElement(sel.PickObject(ObjectType.Element));
-            Element el2 = doc.GetElement(sel.PickObject(ObjectType.Element));
-
-
-            Line l1 = (el1.Location as LocationCurve).Curve as Line;
-            Line l2 = (el2.Location as LocationCurve).Curve as Line;
-
-            IntersectionResultArray intArr = new IntersectionResultArray();
-            SetComparisonResult compResult = l1.Intersect(l2, out intArr);
-
-
-            return Result.Succeeded;
-        }
-    }
-
-    [Transaction(TransactionMode.Manual)]
     class DetectEavePoints : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -195,7 +161,7 @@ namespace onboxRoofGenerator
                     if (currentEdgeInfo.RoofLineType == RoofLineType.Ridge || currentEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel)
                     {
                         IList<XYZ> currentPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(3);
-                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
                         foreach (XYZ currentPoint in currentPoints)
                         {
                             doc.Create.NewFamilyInstance(currentPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
@@ -238,9 +204,9 @@ namespace onboxRoofGenerator
                 EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
                 TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
 
-                XYZ topChordPoint = currentInfo.GetTrussTopPoint(3);
-                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                doc.Create.NewFamilyInstance(topChordPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                //XYZ topChordPoint = currentInfo.GetTrussTopPoint(3);
+                //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
+                //doc.Create.NewFamilyInstance(topChordPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 
                 //IList<EdgeInfo> conditions = currentInfo.GetEndConditions(0);
 
