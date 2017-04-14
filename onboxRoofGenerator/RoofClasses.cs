@@ -14,15 +14,30 @@ namespace onboxRoofGenerator
 
     class TrussInfo
     {
-        internal XYZ FirstPoint { get; set; }
-        internal XYZ SecondPoint { get; set; }
-        internal double Height { get; set; }
+        public XYZ FirstPoint { get; set; }
+        public XYZ SecondPoint { get; set; }
+        public double Height { get; set; }
+        public CurveArray TopChords { get; set; }
+        public CurveArray BottomChords { get; set; }
 
+
+        internal Line FootPrintLine { get { return GetFootPrinLine(); } }
+        
         public TrussInfo(XYZ firstPoint, XYZ secondPoint, double height)
         {
             FirstPoint = firstPoint;
             SecondPoint = secondPoint;
             Height = height;
+        }
+
+        
+
+        private Line GetFootPrinLine()
+        {
+            if (FirstPoint != null && SecondPoint != null)
+                return Line.CreateBound(FirstPoint, SecondPoint); 
+          
+             return null;
         }
     }
 
@@ -37,6 +52,11 @@ namespace onboxRoofGenerator
 
         internal IList<Edge> RelatedRidgeEaves { get; set; }
         internal IList<Face> RelatedPanelFaces { get; set; }
+
+        public override string ToString()
+        {
+            return RoofLineType.ToString() + ": " + Curve.ApproximateLength +  "'";
+        }
 
         public EdgeInfo()
         {
@@ -416,10 +436,10 @@ namespace onboxRoofGenerator
             return currentRoofTotalHeight;
         }
 
-        internal bool CanBuildTrussAtRidge(double distanceAlongRidge, out TrussInfo trussInfo, out CurveArray topChords, out CurveArray bottomChords)
+        internal bool CanBuildTrussAtRidge(double distanceAlongRidge, out TrussInfo trussInfo)
         {
-            topChords = new CurveArray();
-            bottomChords = new CurveArray();
+            CurveArray topChords = new CurveArray();
+            CurveArray bottomChords = new CurveArray();
             trussInfo = null;
 
             XYZ currentTopPoint = GetTrussTopPoint(distanceAlongRidge);
@@ -445,7 +465,8 @@ namespace onboxRoofGenerator
                 double height = currentTopPoint.DistanceTo(projectedPointOnRidge);
 
                 trussInfo = new TrussInfo(projectedPointOnEave, projectedPointOnRidge, height);
-
+                trussInfo.TopChords = topChords;
+                trussInfo.BottomChords = bottomChords;
                 //Document doc = CurrentRoof.Document;
                 //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
                 //doc.Create.NewFamilyInstance(projectedPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
@@ -469,7 +490,8 @@ namespace onboxRoofGenerator
                 double height = currentTopPoint.DistanceTo(new XYZ(currentTopPoint.X, currentTopPoint.Y, firstPointOnEave.Z));
 
                 trussInfo = new TrussInfo(firstPointOnEave, secondPointOnEave, height);
-
+                trussInfo.TopChords = topChords;
+                trussInfo.BottomChords = bottomChords;
                 //Document doc = CurrentRoof.Document;
                 //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
                 //doc.Create.NewFamilyInstance(firstPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);

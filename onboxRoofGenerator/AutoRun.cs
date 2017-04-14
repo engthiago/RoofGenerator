@@ -29,34 +29,36 @@ namespace onboxRoofGenerator
             FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
 
             //TODO if the footprint contains something other than lines (straight lines) warn the user and exit
+            Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
 
+            if (tTypeElement == null)
+            {
+                message = "Nenhum tipo de treliça foi encontrada, por favor, carregue um tipo e rode este comando novamente";
+                return Result.Failed;
+            }
+
+            TrussType tType = tTypeElement as TrussType;
             IList<EdgeInfo> currentRoofEdgeInfoList = new List<EdgeInfo>();
 
-            using (Transaction t2 = new Transaction(doc, "Points"))
+            using (Transaction t = new Transaction(doc, "Points"))
             {
-                t2.Start();
+                t.Start();
                 currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
-
-                Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
-                TrussType tType = tTypeElement as TrussType;
 
                 foreach (EdgeInfo currentEdgeInfo in currentRoofEdgeInfoList)
                 {
                     if (currentEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel || currentEdgeInfo.RoofLineType == RoofLineType.Ridge)
                     {
-                        double distance = 0;
-                        int numPoints = 0;
-                        EstabilishIteractionPoints(currentEdgeInfo.Curve, 8.22, out numPoints, out distance);
-
+                        Tuple<int, double> iterations = Utils.Utils.EstabilishIterations(currentEdgeInfo.Curve.ApproximateLength, 8.22);
+                        int numPoints = iterations.Item1;
+                        double distance = iterations.Item2;
 
                         for (int i = 0; i <= numPoints; i++)
                         {
-                            CurveArray c1 = null;
-                            CurveArray c2 = null;
                             TrussInfo currentTrussInfo = null;
                             double currentParam = i * distance;
 
-                            if (currentEdgeInfo.CanBuildTrussAtRidge(currentParam, out currentTrussInfo, out c1, out c2))
+                            if (currentEdgeInfo.CanBuildTrussAtRidge(currentParam, out currentTrussInfo))
                             {
                                 SketchPlane stkP = SketchPlane.Create(doc, currentEdgeInfo.CurrentRoof.LevelId);
 
@@ -69,11 +71,16 @@ namespace onboxRoofGenerator
                                 currentTruss.get_Parameter(BuiltInParameter.TRUSS_HEIGHT).Set(currentTrussInfo.Height);
 
                             }
+                            else
+                            {
+                                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                                doc.Create.NewFamilyInstance(currentEdgeInfo.GetTrussTopPoint(currentParam), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                            }
                         }
                     }
                 }
 
-                t2.Commit();
+                t.Commit();
             }
 
 
@@ -118,18 +125,6 @@ namespace onboxRoofGenerator
 
             return Result.Succeeded;
         }
-
-        private void EstabilishIteractionPoints(Curve currentCurve, double maxPointDistInFeet, out int numberOfInteractions, out double increaseAmount)
-        {
-            double currentCurveLength = currentCurve.ApproximateLength;
-
-            if (maxPointDistInFeet > currentCurveLength)
-                numberOfInteractions = 1;
-            else
-                numberOfInteractions = (int)(Math.Ceiling(currentCurveLength / maxPointDistInFeet));
-
-            increaseAmount = currentCurveLength / numberOfInteractions;
-        }
     }
 
     [Transaction(TransactionMode.Manual)]
@@ -150,8 +145,6 @@ namespace onboxRoofGenerator
             FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
 
             IList<EdgeInfo> currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
-
-            //TODO check for roofs with single panel why is the ridge returning undefined when we pick the bottom faces
 
             using (Transaction t2 = new Transaction(doc, "Points"))
             {
@@ -198,43 +191,8 @@ namespace onboxRoofGenerator
             Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
                 , currentFootPrintRoof, out pfaces);
 
-            using (Transaction t2 = new Transaction(doc, "Points"))
-            {
-                t2.Start();
-                EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
-                TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
-
-                //XYZ topChordPoint = currentInfo.GetTrussTopPoint(3);
-                //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                //doc.Create.NewFamilyInstance(topChordPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-
-                //IList<EdgeInfo> conditions = currentInfo.GetEndConditions(0);
-
-                //foreach (EdgeInfo currentCondi in conditions)
-                //{
-                //    TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
-                //}
-                t2.Commit();
-            }
-
-
-
-
-            //using (Transaction t2 = new Transaction(doc, "Points"))
-            //{
-            //    t2.Start();
-            //    FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-            //    doc.Create.NewFamilyInstance(currentInfo.Curve.GetEndPoint(0), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-            //    foreach (EdgeInfo currentCondi in conditions)
-            //    {
-            //        TaskDialog.Show("condition", currentCondi.RoofLineType.ToString());
-            //        PlanarFace pfce = currentCondi.GetRelatedPanels()[0] as PlanarFace;
-            //        Plane pl = new Plane(pfce.FaceNormal, pfce.Origin);
-            //        SketchPlane skp = SketchPlane.Create(doc, pl);
-            //        doc.Create.NewModelCurve(currentCondi.Curve, skp);
-            //    }
-            //    t2.Commit();
-            //}
+            EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
+            TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
 
 
             return Result.Succeeded;
