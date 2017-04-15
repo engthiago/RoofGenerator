@@ -144,31 +144,18 @@ namespace onboxRoofGenerator
             if (RelatedRidgeEaves == null || RelatedRidgeEaves.Count == 0)
                 throw new Exception("Related eave or eaves to current singleRidge was not found");
 
-            ///////////////////////////////////////////////////////////////////////////////////////
-            #region This code can be extracted as a method to use in both this and the eave points
 
             Curve eaveCurve = RelatedRidgeEaves[0].AsCurve();
             if (eaveCurve as Line == null) throw new Exception("Related eave is not a straight line!");
 
-            Line eaveInfiniteLine = (eaveCurve as Line).Flatten(currentRoofTotalHeight);
-            eaveInfiniteLine.MakeUnbound();
-            XYZ crossedRidgeDirection = ridgePointFlatten.Add(currentRidgeLine.Flatten(currentRoofTotalHeight).Direction.CrossProduct(XYZ.BasisZ));
-            Line crossedRidgeInfitineLine = Line.CreateBound(ridgePointFlatten, crossedRidgeDirection.Multiply(1));
-            crossedRidgeInfitineLine.Flatten(currentRoofTotalHeight);
-            crossedRidgeInfitineLine.MakeUnbound();
+            Line eaveLine = eaveCurve as Line;
 
-            IntersectionResultArray lineInterserctions = null;
-            eaveInfiniteLine.Intersect(crossedRidgeInfitineLine, out lineInterserctions);
+            XYZ lineIntersectionPoint = GeometrySupport.GetRoofIntersectionFlattenLines(currentRidgeLine, ridgePointFlatten, eaveLine, currentRoofTotalHeight);
 
-            if (lineInterserctions == null || lineInterserctions.Size > 1)
-                throw new Exception("Crossed ridge and eave intersection can not be obtained");
+            if (lineIntersectionPoint == null) throw new Exception("No Intersection between eave could be estabilished!");
 
-            XYZ lineIntersectionPoint = lineInterserctions.get_Item(0).XYZPoint;
             XYZ overHangdirection = Line.CreateBound(projectedPoint, lineIntersectionPoint).Direction.Normalize();
-
             XYZ pointOnOverhang = projectedPoint.Add(overHangdirection.Multiply(overHang)); 
-
-            #endregion
 
             //We will get the point on the overhang because if we are working with a single panel ridge it may have overhangs
             XYZ pointOnSupport = GetSupportPoint(pointOnOverhang, currentRidgeLine.Direction.Normalize());
@@ -449,9 +436,36 @@ namespace onboxRoofGenerator
 
             IList<XYZ> currentSupportPoints = ProjectSupportPointsOnRoof(distanceAlongRidge);
             if (currentSupportPoints.Count == 0)
+            {
+                //
                 return false;
+                //
 
-            if (currentSupportPoints.Count == 1)
+                if (RoofLineType != RoofLineType.Ridge)
+                    return false;
+
+                IList<EdgeInfo> endConditionList = GetEndConditions(1);
+
+                if (endConditionList.Count != 2)
+                    return false;
+
+                EdgeInfo edge0 = endConditionList[0];
+                EdgeInfo edge1 = endConditionList[1];
+
+                if (edge0.RoofLineType != RoofLineType.Valley || edge1.RoofLineType != RoofLineType.Valley)
+                    return false;
+
+                Line line0 = edge0.Curve as Line;
+                Line line1 = edge1.Curve as Line;
+
+                if (line0 == null || line1 == null)
+                    return false;
+
+
+
+
+            }
+            else if (currentSupportPoints.Count == 1)
             {
 
                 if (RoofLineType != RoofLineType.RidgeSinglePanel)

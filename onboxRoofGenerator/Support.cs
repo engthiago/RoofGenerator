@@ -501,4 +501,26 @@ namespace onboxRoofGenerator
             return resultingListOfEdgeInfo;
         }
     }
+
+    class GeometrySupport
+    {
+        static internal XYZ GetRoofIntersectionFlattenLines(Line RidgeLine, XYZ ridgePointFlatten, Line eaveOrValleyLine, double flattenHeight)
+        {
+            Line eaveOrValleyInfiniteLine = (eaveOrValleyLine as Line).Flatten(flattenHeight);
+            eaveOrValleyInfiniteLine.MakeUnbound();
+            XYZ crossedRidgeDirection = ridgePointFlatten.Add(RidgeLine.Flatten(flattenHeight).Direction.CrossProduct(XYZ.BasisZ));
+            Line crossedRidgeInfitineLine = Line.CreateBound(ridgePointFlatten, crossedRidgeDirection.Multiply(1));
+            crossedRidgeInfitineLine.Flatten(flattenHeight);
+            crossedRidgeInfitineLine.MakeUnbound();
+
+            IntersectionResultArray lineInterserctions = null;
+            eaveOrValleyInfiniteLine.Intersect(crossedRidgeInfitineLine, out lineInterserctions);
+
+            if (lineInterserctions == null || lineInterserctions.Size > 1 || lineInterserctions.Size == 0)
+                return null;
+
+            return lineInterserctions.get_Item(0).XYZPoint;
+        }
+    }
+
 }

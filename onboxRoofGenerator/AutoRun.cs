@@ -69,7 +69,6 @@ namespace onboxRoofGenerator
                                 Truss currentTruss = Truss.Create(doc, tType.Id, stkP.Id, Line.CreateBound(firstPoint, secondPoint));
 
                                 currentTruss.get_Parameter(BuiltInParameter.TRUSS_HEIGHT).Set(currentTrussInfo.Height);
-
                             }
                             else
                             {
