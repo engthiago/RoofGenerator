@@ -59,6 +59,15 @@ namespace onboxRoofGenerator
             return false;
         }
 
+        static internal XYZ Rotate(this XYZ currentVector, double angle, bool angleIsRadians = false)
+        {
+            if (!angleIsRadians)
+                angle = Utils.Utils.ConvertM.degreesToRadians(angle);
+
+            double x1 = (currentVector.X * Math.Cos(angle)) - (currentVector.Y * Math.Sin(angle));
+            double y1 = (currentVector.X * Math.Sin(angle)) + (currentVector.Y * Math.Cos(angle));
+            return new XYZ(x1, y1, currentVector.Z);
+        }
 
     }
 }

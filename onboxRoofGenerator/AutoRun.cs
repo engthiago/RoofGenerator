@@ -170,6 +170,45 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
+    class Test : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
+
+            if ((uidoc.ActiveView as View3D) == null)
+            {
+                message = "Por favor, rode este comando em uma vista 3d";
+                return Result.Failed;
+            }
+
+            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Edge);
+            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
+            Edge edge = currentFootPrintRoof.GetGeometryObjectFromReference(currentReference) as Edge;
+
+            IList<PlanarFace> pfaces = new List<PlanarFace>();
+            Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
+                , currentFootPrintRoof, out pfaces);
+
+            EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
+
+            using (Transaction t = new Transaction(doc, "Test"))
+            {
+                t.Start();
+
+                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                doc.Create.NewFamilyInstance((currentInfo.Curve as Line).Direction, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                doc.Create.NewFamilyInstance(((currentInfo.Curve as Line).Direction).Rotate(-90), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                doc.Create.NewFamilyInstance(((currentInfo.Curve as Line).Direction).Rotate(45), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                t.Commit();
+            }
+            
+            return Result.Succeeded;
+        }
+    }
+
+    [Transaction(TransactionMode.Manual)]
     class DetectSingleEdge : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
