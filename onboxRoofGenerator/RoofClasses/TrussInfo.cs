@@ -76,8 +76,10 @@ namespace onboxRoofGenerator.RoofClasses
                 if (intersectingPointValleyOrGable0 == null || intersectingPointValleyOrGable1 == null)
                     return trussInfo;
 
-                XYZ supportPoint0 = currentEdgeInfo.GetSupportPoint(intersectingPointValleyOrGable0, currentRigeLine.Direction, 20);
-                XYZ supportPoint1 = currentEdgeInfo.GetSupportPoint(intersectingPointValleyOrGable1, currentRigeLine.Direction, 20);
+                //TODO Change this to the double of max distance between Trusses
+                double maxDistance = 20;
+                XYZ supportPoint0 = currentEdgeInfo.GetSupportPoint(intersectingPointValleyOrGable0, currentRigeLine.Direction, maxDistance);
+                XYZ supportPoint1 = currentEdgeInfo.GetSupportPoint(intersectingPointValleyOrGable1, currentRigeLine.Direction, maxDistance);
 
                 if (supportPoint0 == null || supportPoint1 == null)
                     return trussInfo;

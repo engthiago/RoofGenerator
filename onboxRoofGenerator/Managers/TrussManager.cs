@@ -134,6 +134,9 @@ namespace onboxRoofGenerator.Managers
             if (currentRidgeWithSupports == null)
                 return null;
 
+            //TODO Change this to the max distance between Trusses
+            double maxDistance = 9;
+
             Line newRidgeLine = currentRidgeWithSupports.Clone() as Line;
 
             if (startConditions.Count == 1 || startConditions.Count == 2)
@@ -156,7 +159,7 @@ namespace onboxRoofGenerator.Managers
                 {
                     XYZ startPoint = currentRidgeWithSupports.GetEndPoint(0);
                     XYZ edgePointOnRoofBaseHeight = new XYZ(startPoint.X, startPoint.Y, currentGableInfo.GetCurrentRoofHeight());
-                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), 9);
+                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), maxDistance);
                     XYZ newRidgeStartPoint = new XYZ(supportPoint.X, supportPoint.Y, startPoint.Z);
 
                     newRidgeLine = Line.CreateBound(newRidgeStartPoint, newRidgeLine.GetEndPoint(1));
@@ -183,7 +186,7 @@ namespace onboxRoofGenerator.Managers
                 {
                     XYZ endPoint = currentRidgeWithSupports.GetEndPoint(1);
                     XYZ edgePointOnRoofBaseHeight = new XYZ(endPoint.X, endPoint.Y, currentGableInfo.GetCurrentRoofHeight());
-                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), 9);
+                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), maxDistance);
                     XYZ newRidgeEndPoint = new XYZ(supportPoint.X, supportPoint.Y, endPoint.Z);
 
                     newRidgeLine = Line.CreateBound(newRidgeLine.GetEndPoint(0), newRidgeEndPoint);
