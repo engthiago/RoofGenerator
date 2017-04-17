@@ -86,7 +86,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoRun.cs" />
-    <Compile Include="Extension.cs" />
+    <Compile Include="Utils\Extension.cs" />
+    <Compile Include="Managers\TrussManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -100,7 +101,10 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Compile Include="RoofClasses.cs" />
+    <Compile Include="RoofClasses\EdgeInfo.cs" />
+    <Compile Include="RoofClasses\Enums.cs" />
+    <Compile Include="RoofClasses\SelectionFilters.cs" />
+    <Compile Include="RoofClasses\TrussInfo.cs" />
     <Compile Include="Support.cs" />
     <Compile Include="Utils\Utils.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">

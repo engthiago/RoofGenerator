@@ -1,47 +1,12 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.IFC;
-using Autodesk.Revit.UI.Selection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace onboxRoofGenerator
+namespace onboxRoofGenerator.RoofClasses
 {
-    enum RoofLineType { Hip, Ridge, RidgeSinglePanel, Valley, Eave, Gable, Undefined };
-
-
-    class TrussInfo
-    {
-        public XYZ FirstPoint { get; set; }
-        public XYZ SecondPoint { get; set; }
-        public double Height { get; set; }
-        public CurveArray TopChords { get; set; }
-        public CurveArray BottomChords { get; set; }
-
-
-        internal Line FootPrintLine { get { return GetFootPrinLine(); } }
-        
-        public TrussInfo(XYZ firstPoint, XYZ secondPoint, double height)
-        {
-            FirstPoint = firstPoint;
-            SecondPoint = secondPoint;
-            Height = height;
-        }
-
-        
-
-        private Line GetFootPrinLine()
-        {
-            if (FirstPoint != null && SecondPoint != null)
-                return Line.CreateBound(FirstPoint, SecondPoint); 
-          
-             return null;
-        }
-    }
-
-
     //TODO create child class of this one, to handle Ridges and merged Gables and other specific functions
     class EdgeInfo
     {
@@ -55,7 +20,7 @@ namespace onboxRoofGenerator
 
         public override string ToString()
         {
-            return RoofLineType.ToString() + ": " + Curve.ApproximateLength +  "'";
+            return RoofLineType.ToString() + ": " + Curve.ApproximateLength + "'";
         }
 
         public EdgeInfo()
@@ -92,7 +57,7 @@ namespace onboxRoofGenerator
 
             if (RoofLineType == RoofLineType.Ridge)
                 return ridgePoint;
-            
+
 
             //If the is not a Ridge this MUST be a SinglePanelRidge
             if (RoofLineType != RoofLineType.RidgeSinglePanel)
@@ -132,7 +97,7 @@ namespace onboxRoofGenerator
 
             double overHang = 0;
             try { overHang = CurrentRoof.get_Overhang(targetEave); }
-            catch {  }
+            catch { }
 
             XYZ ridgePointFlatten = new XYZ(ridgePoint.X, ridgePoint.Y, currentRoofTotalHeight);
 
@@ -155,7 +120,7 @@ namespace onboxRoofGenerator
             if (lineIntersectionPoint == null) throw new Exception("No Intersection between eave could be estabilished!");
 
             XYZ overHangdirection = Line.CreateBound(projectedPoint, lineIntersectionPoint).Direction.Normalize();
-            XYZ pointOnOverhang = projectedPoint.Add(overHangdirection.Multiply(overHang)); 
+            XYZ pointOnOverhang = projectedPoint.Add(overHangdirection.Multiply(overHang));
 
             //We will get the point on the overhang because if we are working with a single panel ridge it may have overhangs
             XYZ pointOnSupport = GetSupportPoint(pointOnOverhang, currentRidgeLine.Direction.Normalize());
@@ -487,7 +452,7 @@ namespace onboxRoofGenerator
                 {
                     double dist = supportPoint0.DistanceTo(new XYZ(supportPoint0.X, supportPoint0.Y, refContext.GetReference().GlobalPoint.Z));
                     trussInfo.Height = trussInfo.Height - dist;
-                } 
+                }
 
                 #endregion
 
@@ -548,22 +513,4 @@ namespace onboxRoofGenerator
         }
 
     }
-
-    internal class FootPrintRoofSelFilter : ISelectionFilter
-    {
-        public bool AllowElement(Element elem)
-        {
-            if ((elem as FootPrintRoof) != null)
-                return true;
-            else
-                return false;
-        }
-
-        public bool AllowReference(Reference reference, XYZ position)
-        {
-            return false;
-        }
-    }
-
-
 }
