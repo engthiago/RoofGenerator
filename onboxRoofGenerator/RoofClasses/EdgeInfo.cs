@@ -316,7 +316,7 @@ namespace onboxRoofGenerator.RoofClasses
             return Support.GetRidgeInfoList(Edges[0], Support.GetRoofEdgeInfoList(CurrentRoof, false).Union(Support.GetRoofEdgeInfoList(CurrentRoof, true)).ToList());
         }
 
-        private XYZ GetSupportPoint(XYZ overhangPoint, XYZ optionalDirection)
+        internal XYZ GetSupportPoint(XYZ overhangPoint, XYZ optionalDirection)
         {
             XYZ minPoint = overhangPoint.Add(XYZ.BasisX.Multiply(-0.5)).Add(XYZ.BasisY.Multiply(-0.5)).Add(XYZ.BasisZ.Multiply(-0.5));
             XYZ maxPoint = overhangPoint.Add(XYZ.BasisX.Multiply(0.5)).Add(XYZ.BasisY.Multiply(0.5)).Add(XYZ.BasisZ.Multiply(0.5));
@@ -390,130 +390,5 @@ namespace onboxRoofGenerator.RoofClasses
 
             return currentRoofTotalHeight;
         }
-
-        internal bool CanBuildTrussAtRidge(double distanceAlongRidge, out TrussInfo trussInfo)
-        {
-            CurveArray topChords = new CurveArray();
-            CurveArray bottomChords = new CurveArray();
-            trussInfo = null;
-
-            XYZ currentTopPoint = GetTrussTopPoint(distanceAlongRidge);
-            //If we cant get the point that means that the projection failed
-            if (currentTopPoint == null)
-                return false;
-
-            IList<XYZ> currentSupportPoints = ProjectSupportPointsOnRoof(distanceAlongRidge);
-            if (currentSupportPoints.Count == 0)
-            {
-                if (RoofLineType != RoofLineType.Ridge)
-                    return false;
-
-                IList<EdgeInfo> endConditionList = GetEndConditions(1);
-
-                if (endConditionList.Count != 2)
-                    return false;
-
-                EdgeInfo edge0 = endConditionList[0];
-                EdgeInfo edge1 = endConditionList[1];
-
-                if (edge0.RoofLineType != RoofLineType.Valley || edge1.RoofLineType != RoofLineType.Valley)
-                    return false;
-
-                Line line0 = edge0.Curve as Line;
-                Line line1 = edge1.Curve as Line;
-
-                if (line0 == null || line1 == null)
-                    return false;
-
-                double height = GetCurrentRoofHeight();
-
-                Line currentRigeLine = Curve as Line;
-                XYZ rigePointFlatten = new XYZ(currentTopPoint.X, currentTopPoint.Y, height);
-                XYZ intersectingPointValley0 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line0, height);
-                XYZ intersectingPointValley1 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line1, height);
-
-                if (intersectingPointValley0 == null || intersectingPointValley1 == null)
-                    return false;
-
-                XYZ supportPoint0 = GetSupportPoint(intersectingPointValley0, currentRigeLine.Direction);
-                XYZ supportPoint1 = GetSupportPoint(intersectingPointValley1, currentRigeLine.Direction);
-
-                if (supportPoint0 == null || supportPoint1 == null)
-                    return false;
-
-                trussInfo = GeometrySupport.GetTrussInfo(currentTopPoint, supportPoint0, supportPoint1);
-
-                if (trussInfo == null)
-                    return false;
-
-                #region When we get the points from a valley we need to adjust the height of the truss
-
-                ReferenceIntersector refIntersect = new ReferenceIntersector(CurrentRoof.Id, FindReferenceTarget.Element, CurrentRoof.Document.ActiveView as View3D);
-                ReferenceWithContext refContext = refIntersect.FindNearest(supportPoint0, XYZ.BasisZ);
-
-                if (refContext != null)
-                {
-                    double dist = supportPoint0.DistanceTo(new XYZ(supportPoint0.X, supportPoint0.Y, refContext.GetReference().GlobalPoint.Z));
-                    trussInfo.Height = trussInfo.Height - dist;
-                }
-
-                #endregion
-
-                return true;
-
-            }
-            else if (currentSupportPoints.Count == 1)
-            {
-
-                if (RoofLineType != RoofLineType.RidgeSinglePanel)
-                    return false;
-
-                XYZ projectedPointOnEave = currentSupportPoints[0];
-                XYZ projectedPointOnRidge = new XYZ(currentTopPoint.X, currentTopPoint.Y, projectedPointOnEave.Z);
-
-                topChords.Append(Line.CreateBound(currentTopPoint, projectedPointOnEave));
-                bottomChords.Append(Line.CreateBound(projectedPointOnRidge, projectedPointOnEave));
-                double height = currentTopPoint.DistanceTo(projectedPointOnRidge);
-
-                trussInfo = new TrussInfo(projectedPointOnEave, projectedPointOnRidge, height);
-                trussInfo.TopChords = topChords;
-                trussInfo.BottomChords = bottomChords;
-                //Document doc = CurrentRoof.Document;
-                //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                //doc.Create.NewFamilyInstance(projectedPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                //doc.Create.NewFamilyInstance(projectedPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                //doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-
-                return true;
-
-            }
-            else if (currentSupportPoints.Count == 2)
-            {
-                if (RoofLineType != RoofLineType.Ridge)
-                    return false;
-
-                XYZ firstPointOnEave = currentSupportPoints[0];
-                XYZ secondPointOnEave = currentSupportPoints[1];
-
-                if (firstPointOnEave == null || secondPointOnEave == null)
-                    return false;
-
-                trussInfo = GeometrySupport.GetTrussInfo(currentTopPoint, firstPointOnEave, secondPointOnEave);
-
-                if (trussInfo == null)
-                    return false;
-                //Document doc = CurrentRoof.Document;
-                //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
-                //doc.Create.NewFamilyInstance(firstPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                //doc.Create.NewFamilyInstance(secondPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                //doc.Create.NewFamilyInstance(currentTopPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-
-                return true;
-
-            }
-
-            return false;
-        }
-
     }
 }

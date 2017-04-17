@@ -81,16 +81,26 @@ namespace onboxRoofGenerator.Managers
 
             if (currentRidgeEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel || currentRidgeEdgeInfo.RoofLineType == RoofLineType.Ridge)
             {
-                Tuple<int, double> iterations = Utils.Utils.EstabilishIterations(currentRidgeEdgeInfo.Curve.ApproximateLength, trussDistance);
+                Line currentRidgeWithSupports = currentRidgeEdgeInfo.Curve as Line;
+
+                if (currentRidgeWithSupports == null)
+                    return trussInfoList;
+
+                IList<EdgeInfo> startConditions = currentRidgeEdgeInfo.GetEndConditions(0);
+                IList<EdgeInfo> endConditions = currentRidgeEdgeInfo.GetEndConditions(1);
+
+                currentRidgeWithSupports = ShortenRidgeIfNecessary(currentRidgeWithSupports, startConditions, endConditions);
+
+                Tuple<int, double> iterations = Utils.Utils.EstabilishIterations(currentRidgeWithSupports.ApproximateLength, trussDistance);
                 int numPoints = iterations.Item1;
                 double distance = iterations.Item2;
 
                 for (int i = 0; i <= numPoints; i++)
                 {
-                    TrussInfo currentTrussInfo = null;
                     double currentParam = i * distance;
+                    TrussInfo currentTrussInfo = TrussInfo.BuildTrussAtRidge(currentParam, currentRidgeEdgeInfo);
 
-                    if (currentRidgeEdgeInfo.CanBuildTrussAtRidge(currentParam, out currentTrussInfo))
+                    if (currentTrussInfo != null)
                     {
                         SketchPlane stkP = SketchPlane.Create(doc, currentRidgeEdgeInfo.CurrentRoof.LevelId);
 
@@ -103,18 +113,81 @@ namespace onboxRoofGenerator.Managers
                         currentTruss.get_Parameter(BuiltInParameter.TRUSS_HEIGHT).Set(currentTrussInfo.Height);
                         trussInfoList.Add(currentTrussInfo);
                     }
-                    else //For debug only
+                    #region DEBUG ONLY
+                    else
                     {
 #if DEBUG
                         FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
                         doc.Create.NewFamilyInstance(currentRidgeEdgeInfo.GetTrussTopPoint(currentParam), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 #endif
                     }
+                    #endregion
                 }
             }
 
             return trussInfoList;
         }
 
+        private Line ShortenRidgeIfNecessary(Line currentRidgeWithSupports, IList<EdgeInfo> startConditions, IList<EdgeInfo> endConditions)
+        {
+            if (currentRidgeWithSupports == null)
+                return null;
+
+            Line newRidgeLine = currentRidgeWithSupports.Clone() as Line;
+
+            if (startConditions.Count == 1 || startConditions.Count == 2)
+            {
+                EdgeInfo currentGableInfo = null;
+
+                if (startConditions.Count == 1)
+                {
+                    currentGableInfo = startConditions[0];
+                }
+                else
+                {
+                    if (startConditions[0].RoofLineType == RoofLineType.Gable)
+                        currentGableInfo = startConditions[0];
+                    else if (startConditions[1].RoofLineType == RoofLineType.Gable)
+                        currentGableInfo = startConditions[1];
+                }
+
+                if (currentGableInfo != null)
+                {
+                    XYZ startPoint = currentRidgeWithSupports.GetEndPoint(0);
+                    XYZ edgePointOnRoofBaseHeight = new XYZ(startPoint.X, startPoint.Y, currentGableInfo.GetCurrentRoofHeight());
+                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90));
+
+                    newRidgeLine = Line.CreateBound(supportPoint, newRidgeLine.GetEndPoint(1));
+                }
+            }
+
+            if (endConditions.Count == 1 || endConditions.Count == 2)
+            {
+                EdgeInfo currentGableInfo = null;
+
+                if (endConditions.Count == 1)
+                {
+                    currentGableInfo = endConditions[0];
+                }
+                else
+                {
+                    if (endConditions[0].RoofLineType == RoofLineType.Gable)
+                        currentGableInfo = endConditions[0];
+                    else if (endConditions[1].RoofLineType == RoofLineType.Gable)
+                        currentGableInfo = endConditions[1];
+                }
+
+                if (currentGableInfo != null)
+                {
+                    XYZ endPoint = currentRidgeWithSupports.GetEndPoint(1);
+                    XYZ edgePointOnRoofBaseHeight = new XYZ(endPoint.X, endPoint.Y, currentGableInfo.GetCurrentRoofHeight());
+                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90));
+
+                    newRidgeLine = Line.CreateBound(newRidgeLine.GetEndPoint(0), supportPoint);
+                }
+            }
+
+            return newRidgeLine;
+        }
     }
 }
