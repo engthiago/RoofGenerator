@@ -510,7 +510,7 @@ namespace onboxRoofGenerator
             eaveOrValleyInfiniteLine.MakeUnbound();
             XYZ crossedRidgeDirection = ridgePointFlatten.Add(RidgeLine.Flatten(flattenHeight).Direction.CrossProduct(XYZ.BasisZ));
             Line crossedRidgeInfitineLine = Line.CreateBound(ridgePointFlatten, crossedRidgeDirection.Multiply(1));
-            crossedRidgeInfitineLine.Flatten(flattenHeight);
+            crossedRidgeInfitineLine = crossedRidgeInfitineLine.Flatten(flattenHeight);
             crossedRidgeInfitineLine.MakeUnbound();
 
             IntersectionResultArray lineInterserctions = null;
@@ -521,6 +521,27 @@ namespace onboxRoofGenerator
 
             return lineInterserctions.get_Item(0).XYZPoint;
         }
+
+        static internal TrussInfo GetTrussInfo(XYZ currentTopPoint, XYZ supportPoint0, XYZ supportPoint1)
+        {
+            if (currentTopPoint.DistanceTo(supportPoint0) < 0.5 || currentTopPoint.DistanceTo(supportPoint1) < 0.5 || supportPoint0.DistanceTo(supportPoint1) < 0.5)
+                return null;
+
+            CurveArray topChords = new CurveArray();
+            CurveArray bottomChords = new CurveArray();
+
+            topChords.Append(Line.CreateBound(currentTopPoint, supportPoint0));
+            topChords.Append(Line.CreateBound(currentTopPoint, supportPoint1));
+            bottomChords.Append(Line.CreateBound(supportPoint0, supportPoint1));
+            double height = currentTopPoint.DistanceTo(new XYZ(currentTopPoint.X, currentTopPoint.Y, supportPoint0.Z));
+
+            TrussInfo trussInfo = new TrussInfo(supportPoint0, supportPoint1, height);
+            trussInfo.TopChords = topChords;
+            trussInfo.BottomChords = bottomChords;
+
+            return trussInfo;
+        }
+
     }
 
 }

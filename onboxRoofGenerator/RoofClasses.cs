@@ -437,10 +437,6 @@ namespace onboxRoofGenerator
             IList<XYZ> currentSupportPoints = ProjectSupportPointsOnRoof(distanceAlongRidge);
             if (currentSupportPoints.Count == 0)
             {
-                //
-                return false;
-                //
-
                 if (RoofLineType != RoofLineType.Ridge)
                     return false;
 
@@ -461,8 +457,41 @@ namespace onboxRoofGenerator
                 if (line0 == null || line1 == null)
                     return false;
 
+                double height = GetCurrentRoofHeight();
 
+                Line currentRigeLine = Curve as Line;
+                XYZ rigePointFlatten = new XYZ(currentTopPoint.X, currentTopPoint.Y, height);
+                XYZ intersectingPointValley0 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line0, height);
+                XYZ intersectingPointValley1 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line1, height);
 
+                if (intersectingPointValley0 == null || intersectingPointValley1 == null)
+                    return false;
+
+                XYZ supportPoint0 = GetSupportPoint(intersectingPointValley0, currentRigeLine.Direction);
+                XYZ supportPoint1 = GetSupportPoint(intersectingPointValley1, currentRigeLine.Direction);
+
+                if (supportPoint0 == null || supportPoint1 == null)
+                    return false;
+
+                trussInfo = GeometrySupport.GetTrussInfo(currentTopPoint, supportPoint0, supportPoint1);
+
+                if (trussInfo == null)
+                    return false;
+
+                #region When we get the points from a valley we need to adjust the height of the truss
+
+                ReferenceIntersector refIntersect = new ReferenceIntersector(CurrentRoof.Id, FindReferenceTarget.Element, CurrentRoof.Document.ActiveView as View3D);
+                ReferenceWithContext refContext = refIntersect.FindNearest(supportPoint0, XYZ.BasisZ);
+
+                if (refContext != null)
+                {
+                    double dist = supportPoint0.DistanceTo(new XYZ(supportPoint0.X, supportPoint0.Y, refContext.GetReference().GlobalPoint.Z));
+                    trussInfo.Height = trussInfo.Height - dist;
+                } 
+
+                #endregion
+
+                return true;
 
             }
             else if (currentSupportPoints.Count == 1)
@@ -498,14 +527,13 @@ namespace onboxRoofGenerator
                 XYZ firstPointOnEave = currentSupportPoints[0];
                 XYZ secondPointOnEave = currentSupportPoints[1];
 
-                topChords.Append(Line.CreateBound(currentTopPoint, firstPointOnEave));
-                topChords.Append(Line.CreateBound(currentTopPoint, secondPointOnEave));
-                bottomChords.Append(Line.CreateBound(firstPointOnEave, secondPointOnEave));
-                double height = currentTopPoint.DistanceTo(new XYZ(currentTopPoint.X, currentTopPoint.Y, firstPointOnEave.Z));
+                if (firstPointOnEave == null || secondPointOnEave == null)
+                    return false;
 
-                trussInfo = new TrussInfo(firstPointOnEave, secondPointOnEave, height);
-                trussInfo.TopChords = topChords;
-                trussInfo.BottomChords = bottomChords;
+                trussInfo = GeometrySupport.GetTrussInfo(currentTopPoint, firstPointOnEave, secondPointOnEave);
+
+                if (trussInfo == null)
+                    return false;
                 //Document doc = CurrentRoof.Document;
                 //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
                 //doc.Create.NewFamilyInstance(firstPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
