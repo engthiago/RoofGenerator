@@ -50,14 +50,11 @@ namespace onboxRoofGenerator.RoofClasses
             return resultingEdgeInfo;
         }
 
-        internal XYZ GetTrussTopPoint(double distanceAlongRidge)
+        internal XYZ GetTrussTopPoint(XYZ currentPointOnRidge)
         {
-            double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
-            XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
 
             if (RoofLineType == RoofLineType.Ridge)
-                return ridgePoint;
-
+                return currentPointOnRidge;
 
             //If the is not a Ridge this MUST be a SinglePanelRidge
             if (RoofLineType != RoofLineType.RidgeSinglePanel)
@@ -85,12 +82,12 @@ namespace onboxRoofGenerator.RoofClasses
 
                     targetGeoLine = targetGeoLine.Flatten(currentRoofTotalHeight);
 
-                    double currentDist = targetGeoLine.Project(ridgePoint).Distance;
+                    double currentDist = targetGeoLine.Project(currentPointOnRidge).Distance;
                     if (currentDist < minDist)
                     {
                         minDist = currentDist;
                         targetEave = currentCurve;
-                        projectedPoint = targetGeoLine.Project(ridgePoint).XYZPoint;
+                        projectedPoint = targetGeoLine.Project(currentPointOnRidge).XYZPoint;
                     }
                 }
             }
@@ -99,7 +96,7 @@ namespace onboxRoofGenerator.RoofClasses
             try { overHang = CurrentRoof.get_Overhang(targetEave); }
             catch { }
 
-            XYZ ridgePointFlatten = new XYZ(ridgePoint.X, ridgePoint.Y, currentRoofTotalHeight);
+            XYZ ridgePointFlatten = new XYZ(currentPointOnRidge.X, currentPointOnRidge.Y, currentRoofTotalHeight);
 
             //We just need to get the side that the eave is to move the point to that direction
             //so we dont need to get a specific eave, lets just project the first one with infinite bounds to get the direction
@@ -138,16 +135,13 @@ namespace onboxRoofGenerator.RoofClasses
             return projectedPointOnRoof;
         }
 
-        internal IList<XYZ> ProjectRidgePointOnEaves(double distanceAlongRidge)
+        internal IList<XYZ> ProjectRidgePointOnEaves(XYZ currentPointOnRidge)
         {
 
             if (RoofLineType != RoofLineType.Ridge && RoofLineType != RoofLineType.RidgeSinglePanel)
                 throw new Exception("EdgeInfo is not a Ridge!");
 
             double currentRoofTotalHeight = GetCurrentRoofHeight();
-
-            double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
-            XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
 
             if (RelatedRidgeEaves.Count == 0)
                 RelatedRidgeEaves = GetRelatedEaves();
@@ -163,7 +157,7 @@ namespace onboxRoofGenerator.RoofClasses
 
             //TODO try to extract the this to use on get top truss point
             XYZ crossedDirection = currentRidgeLine.Direction.CrossProduct(XYZ.BasisZ);
-            Line CrossedRidgeLine = Line.CreateBound(ridgePoint, crossedDirection.Add(ridgePoint)).Flatten(currentRoofTotalHeight);
+            Line CrossedRidgeLine = Line.CreateBound(currentPointOnRidge, crossedDirection.Add(currentPointOnRidge)).Flatten(currentRoofTotalHeight);
             Line CrossedRidgeLineFlatten = (CrossedRidgeLine.Clone() as Line);
             CrossedRidgeLineFlatten.MakeUnbound();
 
@@ -200,11 +194,11 @@ namespace onboxRoofGenerator.RoofClasses
 
         }
 
-        internal IList<XYZ> GetEavePointsOnOverhang(double distanceAlongRidge)
+        internal IList<XYZ> GetEavePointsOnOverhang(XYZ currentPointOnRidge)
         {
             IList<XYZ> ProjectedPoints = new List<XYZ>();
-            XYZ currentPointOnRidge = Curve.Evaluate(Curve.GetEndParameter(0) + distanceAlongRidge, false);
-            foreach (XYZ currentPointOnEave in ProjectRidgePointOnEaves(distanceAlongRidge))
+            //XYZ currentPointOnRidge = Curve.Evaluate(Curve.GetEndParameter(0) + distanceAlongRidge, false);
+            foreach (XYZ currentPointOnEave in ProjectRidgePointOnEaves(currentPointOnRidge))
             {
                 ModelCurveArrArray sketchModels = CurrentRoof.GetProfiles();
                 double minDist = double.MaxValue;
@@ -247,9 +241,9 @@ namespace onboxRoofGenerator.RoofClasses
             return ProjectedPoints;
         }
 
-        internal IList<XYZ> GetEavePointsOnSupports(double distanceAlongRidge)
+        internal IList<XYZ> GetEavePointsOnSupports(XYZ currentPointOnRidge)
         {
-            IList<XYZ> overhangPoints = GetEavePointsOnOverhang(distanceAlongRidge);
+            IList<XYZ> overhangPoints = GetEavePointsOnOverhang(currentPointOnRidge);
             IList<XYZ> projectedPoints = new List<XYZ>();
             foreach (XYZ currentPoint in overhangPoints)
             {
@@ -262,15 +256,14 @@ namespace onboxRoofGenerator.RoofClasses
             return projectedPoints;
         }
 
-        internal IList<XYZ> ProjectSupportPointsOnRoof(double distanceAlongRidge)
+        internal IList<XYZ> ProjectSupportPointsOnRoof(XYZ currentPointOnRidge)
         {
-            IList<XYZ> supportPoints = GetEavePointsOnSupports(distanceAlongRidge);
+            IList<XYZ> supportPoints = GetEavePointsOnSupports(currentPointOnRidge);
 
             //if (supportPoints.Count < 1 || supportPoints.Count > 2)
             //    throw new Exception("Invalid number of support points for the truss");
 
             IList<XYZ> resultingPoints = new List<XYZ>();
-            double parameterDistance = Curve.GetEndParameter(0) + distanceAlongRidge;
 
             ReferenceIntersector roofIntersector = new ReferenceIntersector(CurrentRoof.Id, FindReferenceTarget.Element, CurrentRoof.Document.ActiveView as View3D);
 
@@ -291,8 +284,7 @@ namespace onboxRoofGenerator.RoofClasses
                 {
                     if (Support.HasSameSlopes(CurrentRoof))
                     {
-                        XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
-                        XYZ ridgePointFlaten = new XYZ(ridgePoint.X, ridgePoint.Y, resultingPoints[0].Z);
+                        XYZ ridgePointFlaten = new XYZ(currentPointOnRidge.X, currentPointOnRidge.Y, resultingPoints[0].Z);
                         Line CrossedRidgeLine = Line.CreateBound(resultingPoints[0], ridgePointFlaten);
                         XYZ crossedDirection = CrossedRidgeLine.Direction;
                         XYZ mirroredPoint = resultingPoints[0].Add(crossedDirection.Multiply(CrossedRidgeLine.ApproximateLength * 2));
@@ -316,10 +308,16 @@ namespace onboxRoofGenerator.RoofClasses
             return Support.GetRidgeInfoList(Edges[0], Support.GetRoofEdgeInfoList(CurrentRoof, false).Union(Support.GetRoofEdgeInfoList(CurrentRoof, true)).ToList());
         }
 
-        internal XYZ GetSupportPoint(XYZ overhangPoint, XYZ optionalDirection)
+        internal XYZ GetSupportPoint(XYZ overhangPoint, XYZ optionalDirection, double searchBoundings = 1)
         {
-            XYZ minPoint = overhangPoint.Add(XYZ.BasisX.Multiply(-0.5)).Add(XYZ.BasisY.Multiply(-0.5)).Add(XYZ.BasisZ.Multiply(-0.5));
-            XYZ maxPoint = overhangPoint.Add(XYZ.BasisX.Multiply(0.5)).Add(XYZ.BasisY.Multiply(0.5)).Add(XYZ.BasisZ.Multiply(0.5));
+            if (searchBoundings != 1)
+            {
+                if (searchBoundings <= 0)
+                    searchBoundings = 1;
+            }
+
+            XYZ minPoint = overhangPoint.Add(XYZ.BasisX.Multiply(-searchBoundings/2)).Add(XYZ.BasisY.Multiply(-searchBoundings / 2)).Add(XYZ.BasisZ.Multiply(-searchBoundings / 2));
+            XYZ maxPoint = overhangPoint.Add(XYZ.BasisX.Multiply(searchBoundings / 2)).Add(XYZ.BasisY.Multiply(searchBoundings / 2)).Add(XYZ.BasisZ.Multiply(searchBoundings / 2));
             //BoundingBoxXYZ bbVolume = new BoundingBoxXYZ();
             //bbVolume.Min = minPoint;
             //bbVolume.Max = maxPoint;

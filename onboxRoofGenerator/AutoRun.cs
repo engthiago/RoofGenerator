@@ -57,34 +57,34 @@ namespace onboxRoofGenerator
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            if ((uidoc.ActiveView as View3D) == null)
-            {
-                message = "Por favor, rode este comando em uma vista 3d";
-                return Result.Failed;
-            }
+            //if ((uidoc.ActiveView as View3D) == null)
+            //{
+            //    message = "Por favor, rode este comando em uma vista 3d";
+            //    return Result.Failed;
+            //}
 
-            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado.");
-            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
+            //Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado.");
+            //FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
 
-            IList<RoofClasses.EdgeInfo> currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
+            //IList<RoofClasses.EdgeInfo> currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
 
-            using (Transaction t2 = new Transaction(doc, "Points"))
-            {
-                t2.Start();
-                foreach (RoofClasses.EdgeInfo currentEdgeInfo in currentRoofEdgeInfoList)
-                {
-                    if (currentEdgeInfo.RoofLineType == RoofClasses.RoofLineType.Ridge || currentEdgeInfo.RoofLineType == RoofClasses.RoofLineType.RidgeSinglePanel)
-                    {
-                        IList<XYZ> currentPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(3);
-                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
-                        foreach (XYZ currentPoint in currentPoints)
-                        {
-                            doc.Create.NewFamilyInstance(currentPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                        }
-                    }
-                }
-                t2.Commit();
-            }
+            //using (Transaction t2 = new Transaction(doc, "Points"))
+            //{
+            //    t2.Start();
+            //    foreach (RoofClasses.EdgeInfo currentEdgeInfo in currentRoofEdgeInfoList)
+            //    {
+            //        if (currentEdgeInfo.RoofLineType == RoofClasses.RoofLineType.Ridge || currentEdgeInfo.RoofLineType == RoofClasses.RoofLineType.RidgeSinglePanel)
+            //        {
+            //            IList<XYZ> currentPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(3);
+            //            FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+            //            foreach (XYZ currentPoint in currentPoints)
+            //            {
+            //                doc.Create.NewFamilyInstance(currentPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+            //            }
+            //        }
+            //    }
+            //    t2.Commit();
+            //}
 
 
             return Result.Succeeded;

@@ -33,18 +33,16 @@ namespace onboxRoofGenerator.RoofClasses
             return null;
         }
 
-        static public TrussInfo BuildTrussAtRidge(double distanceAlongRidge, EdgeInfo currentEdgeInfo)
+        static public TrussInfo BuildTrussAtRidge(XYZ currentPointOnRidge, EdgeInfo currentEdgeInfo)
         {
-            CurveArray topChords = new CurveArray();
-            CurveArray bottomChords = new CurveArray();
             TrussInfo trussInfo = null;
-
-            XYZ currentTopPoint = currentEdgeInfo.GetTrussTopPoint(distanceAlongRidge);
+        
+            XYZ currentTopPoint = currentEdgeInfo.GetTrussTopPoint(currentPointOnRidge);
             //If we cant get the point that means that the projection failed
             if (currentTopPoint == null)
                 return trussInfo;
 
-            IList<XYZ> currentSupportPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(distanceAlongRidge);
+            IList<XYZ> currentSupportPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(currentPointOnRidge);
             if (currentSupportPoints.Count == 0)
             {
                 if (currentEdgeInfo.RoofLineType != RoofLineType.Ridge)
@@ -113,13 +111,11 @@ namespace onboxRoofGenerator.RoofClasses
                 XYZ projectedPointOnEave = currentSupportPoints[0];
                 XYZ projectedPointOnRidge = new XYZ(currentTopPoint.X, currentTopPoint.Y, projectedPointOnEave.Z);
 
-                topChords.Append(Line.CreateBound(currentTopPoint, projectedPointOnEave));
-                bottomChords.Append(Line.CreateBound(projectedPointOnRidge, projectedPointOnEave));
                 double height = currentTopPoint.DistanceTo(projectedPointOnRidge);
 
                 trussInfo = new TrussInfo(projectedPointOnEave, projectedPointOnRidge, height);
-                trussInfo.TopChords = topChords;
-                trussInfo.BottomChords = bottomChords;
+                trussInfo.TopChords.Append(Line.CreateBound(currentTopPoint, projectedPointOnEave));
+                trussInfo.BottomChords.Append(Line.CreateBound(projectedPointOnRidge, projectedPointOnEave));
                 //Document doc = CurrentRoof.Document;
                 //FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint2")).FirstOrDefault() as FamilySymbol;
                 //doc.Create.NewFamilyInstance(projectedPointOnEave, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);

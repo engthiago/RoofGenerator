@@ -98,7 +98,8 @@ namespace onboxRoofGenerator.Managers
                 for (int i = 0; i <= numPoints; i++)
                 {
                     double currentParam = i * distance;
-                    TrussInfo currentTrussInfo = TrussInfo.BuildTrussAtRidge(currentParam, currentRidgeEdgeInfo);
+                    XYZ currentPointOnRidge = currentRidgeWithSupports.Evaluate(currentRidgeWithSupports.GetEndParameter(0) + currentParam, false);
+                    TrussInfo currentTrussInfo = TrussInfo.BuildTrussAtRidge(currentPointOnRidge, currentRidgeEdgeInfo);
 
                     if (currentTrussInfo != null)
                     {
@@ -118,7 +119,7 @@ namespace onboxRoofGenerator.Managers
                     {
 #if DEBUG
                         FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
-                        doc.Create.NewFamilyInstance(currentRidgeEdgeInfo.GetTrussTopPoint(currentParam), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                        doc.Create.NewFamilyInstance(currentPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 #endif
                     }
                     #endregion
@@ -155,9 +156,10 @@ namespace onboxRoofGenerator.Managers
                 {
                     XYZ startPoint = currentRidgeWithSupports.GetEndPoint(0);
                     XYZ edgePointOnRoofBaseHeight = new XYZ(startPoint.X, startPoint.Y, currentGableInfo.GetCurrentRoofHeight());
-                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90));
+                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), 9);
+                    XYZ newRidgeStartPoint = new XYZ(supportPoint.X, supportPoint.Y, startPoint.Z);
 
-                    newRidgeLine = Line.CreateBound(supportPoint, newRidgeLine.GetEndPoint(1));
+                    newRidgeLine = Line.CreateBound(newRidgeStartPoint, newRidgeLine.GetEndPoint(1));
                 }
             }
 
@@ -181,9 +183,10 @@ namespace onboxRoofGenerator.Managers
                 {
                     XYZ endPoint = currentRidgeWithSupports.GetEndPoint(1);
                     XYZ edgePointOnRoofBaseHeight = new XYZ(endPoint.X, endPoint.Y, currentGableInfo.GetCurrentRoofHeight());
-                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90));
+                    XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), 9);
+                    XYZ newRidgeEndPoint = new XYZ(supportPoint.X, supportPoint.Y, endPoint.Z);
 
-                    newRidgeLine = Line.CreateBound(newRidgeLine.GetEndPoint(0), supportPoint);
+                    newRidgeLine = Line.CreateBound(newRidgeLine.GetEndPoint(0), newRidgeEndPoint);
                 }
             }
 
