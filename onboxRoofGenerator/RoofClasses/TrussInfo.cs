@@ -56,7 +56,8 @@ namespace onboxRoofGenerator.RoofClasses
                 EdgeInfo edge0 = endConditionList[0];
                 EdgeInfo edge1 = endConditionList[1];
 
-                if (edge0.RoofLineType != RoofLineType.Valley || edge1.RoofLineType != RoofLineType.Valley)
+                if ((edge0.RoofLineType != RoofLineType.Valley && edge0.RoofLineType != RoofLineType.Gable) || 
+                    edge1.RoofLineType != RoofLineType.Valley && edge1.RoofLineType != RoofLineType.Gable)
                     return trussInfo;
 
                 Line line0 = edge0.Curve as Line;
@@ -69,14 +70,14 @@ namespace onboxRoofGenerator.RoofClasses
 
                 Line currentRigeLine = currentEdgeInfo.Curve as Line;
                 XYZ rigePointFlatten = new XYZ(currentTopPoint.X, currentTopPoint.Y, height);
-                XYZ intersectingPointValley0 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line0, height);
-                XYZ intersectingPointValley1 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line1, height);
+                XYZ intersectingPointValleyOrGable0 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line0, height);
+                XYZ intersectingPointValleyOrGable1 = GeometrySupport.GetRoofIntersectionFlattenLines(currentRigeLine, currentTopPoint, line1, height);
 
-                if (intersectingPointValley0 == null || intersectingPointValley1 == null)
+                if (intersectingPointValleyOrGable0 == null || intersectingPointValleyOrGable1 == null)
                     return trussInfo;
 
-                XYZ supportPoint0 = currentEdgeInfo.GetSupportPoint(intersectingPointValley0, currentRigeLine.Direction);
-                XYZ supportPoint1 = currentEdgeInfo.GetSupportPoint(intersectingPointValley1, currentRigeLine.Direction);
+                XYZ supportPoint0 = currentEdgeInfo.GetSupportPoint(intersectingPointValleyOrGable0, currentRigeLine.Direction, 20);
+                XYZ supportPoint1 = currentEdgeInfo.GetSupportPoint(intersectingPointValleyOrGable1, currentRigeLine.Direction, 20);
 
                 if (supportPoint0 == null || supportPoint1 == null)
                     return trussInfo;
