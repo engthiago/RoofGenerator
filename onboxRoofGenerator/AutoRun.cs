@@ -131,7 +131,7 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
-    class DetectSingleEdge : IExternalCommand
+    class DetectSingleEdgeAndPlaceTrusses : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -154,6 +154,22 @@ namespace onboxRoofGenerator
 
             RoofClasses.EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
             TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
+
+            Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
+
+            if (tTypeElement == null)
+            {
+                message = "Nenhum tipo de treliça foi encontrada no projeto, por favor, carregue um tipo e rode este comando novamente";
+                return Result.Failed;
+            }
+
+            TrussType tType = tTypeElement as TrussType;
+            Managers.TrussManager currentTrussManager = new Managers.TrussManager();
+            IList<RoofClasses.TrussInfo> currentTrussInfoList = currentTrussManager.CreateTrussesFromRidgeInfo(currentInfo, tType);
+
+            TaskDialog tDialog = new TaskDialog("Trusses");
+            tDialog.MainInstruction = currentTrussInfoList.Count.ToString();
+            tDialog.Show();
 
             return Result.Succeeded;
         }

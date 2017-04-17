@@ -150,6 +150,9 @@ namespace onboxRoofGenerator.RoofClasses
             XYZ ridgePoint = Curve.Evaluate(parameterDistance, false);
 
             if (RelatedRidgeEaves.Count == 0)
+                RelatedRidgeEaves = GetRelatedEaves();
+            
+            if (RelatedRidgeEaves.Count == 0)
                 throw new Exception("No ridge related eave was found!");
 
             IList<XYZ> projectionPoints = new List<XYZ>();
