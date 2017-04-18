@@ -29,16 +29,16 @@ namespace onboxRoofGenerator.RoofClasses
 
         internal class RidgeSelectionFilter : ISelectionFilter
         {
-            private FootPrintRoof currentFootPrintRoof;
+            private Document doc;
 
-            public RidgeSelectionFilter(FootPrintRoof targetFootPrintRoof)
+            public RidgeSelectionFilter(Document targetDocument)
             {
-                currentFootPrintRoof = targetFootPrintRoof;
+                doc = targetDocument;
             }
 
             public bool AllowElement(Element elem)
             {
-                if (elem.Id == currentFootPrintRoof.Id)
+                if (elem is FootPrintRoof)
                     return true;
                 else
                     return false;
@@ -46,6 +46,16 @@ namespace onboxRoofGenerator.RoofClasses
 
             public bool AllowReference(Reference reference, XYZ position)
             {
+                if (doc == null)
+                    return false;
+                
+                Element currentFootPrintElem = doc.GetElement(reference);
+
+                if (currentFootPrintElem == null)
+                    return false;
+
+                FootPrintRoof currentFootPrintRoof = currentFootPrintElem as FootPrintRoof;
+
                 if (currentFootPrintRoof == null)
                     return false;
 

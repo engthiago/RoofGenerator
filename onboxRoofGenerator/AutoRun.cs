@@ -68,11 +68,10 @@ namespace onboxRoofGenerator
                 }
                 TrussType tType = tTypeElement as TrussType;
 
-                Reference currentRoofReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado");
-                FootPrintRoof currentFootPrintRoof = doc.GetElement(currentRoofReference) as FootPrintRoof;
-
-                ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(currentFootPrintRoof);
+                ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(doc);
                 Reference currentReference = sel.PickObject(ObjectType.Edge, ridgeSelectionFilter);
+
+                FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
                 Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
 
                 IList<PlanarFace> pfaces = new List<PlanarFace>();
@@ -256,11 +255,11 @@ namespace onboxRoofGenerator
                 return Result.Failed;
             }
 
-            Reference currentRoofReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado");
-            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentRoofReference) as FootPrintRoof;
 
-            ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(currentFootPrintRoof);
+            ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(doc);
             Reference currentReference = uidoc.Selection.PickObject(ObjectType.Edge, ridgeSelectionFilter);
+            
+            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
             Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
 
             IList<PlanarFace> pfaces = new List<PlanarFace>();
