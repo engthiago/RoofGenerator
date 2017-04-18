@@ -20,7 +20,7 @@ namespace onboxRoofGenerator
 
             //Verify if the roof has all the same slopes
             if (selectedRoofSlope <= 0) return false;
-            
+
             return true;
         }
 
@@ -236,7 +236,7 @@ namespace onboxRoofGenerator
                                                         //doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                                                         //doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                                                         if (refEnd.GetReference().GlobalPoint.Z < refStart.GetReference().GlobalPoint.Z)
-                                                            isEave = false; 
+                                                            isEave = false;
                                                     }
                                                 }
                                                 else
@@ -260,7 +260,7 @@ namespace onboxRoofGenerator
                                                             //doc.Create.NewFamilyInstance(refEnd.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                                                             //doc.Create.NewFamilyInstance(refStart.GetReference().GlobalPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                                                             if (refEnd.GetReference().GlobalPoint.Z < refStart.GetReference().GlobalPoint.Z)
-                                                                isEave = false; 
+                                                                isEave = false;
                                                         }
                                                     }
                                                 }
@@ -406,7 +406,7 @@ namespace onboxRoofGenerator
             Face targetFace0 = targetEdge.GetFace(0);
             Face targetFace1 = targetEdge.GetFace(1);
 
-            IList<Reference> currentListOfReferences = currentListOfReferences = HostObjectUtils.GetTopFaces(targetRoof);
+            IList<Reference> currentListOfReferences = HostObjectUtils.GetTopFaces(targetRoof).Union(HostObjectUtils.GetBottomFaces(targetRoof)).ToList();
 
             IList<PlanarFace> targetRoofPlanarFaces = new List<PlanarFace>();
             IsListOfPlanarFaces(currentListOfReferences, targetRoof, out targetRoofPlanarFaces);
@@ -541,6 +541,76 @@ namespace onboxRoofGenerator
             trussInfo.BottomChords = bottomChords;
 
             return trussInfo;
+        }
+
+        static internal XYZ AdjustTopPointToRoofAngle(XYZ targetTopPoint, IList<XYZ> supportPoints, EdgeInfo currentRidgeInfo)
+        {
+
+            if (currentRidgeInfo.RelatedPanelFaces == null || currentRidgeInfo.RelatedPanelFaces.Count < 1)
+                currentRidgeInfo.RelatedPanelFaces = currentRidgeInfo.GetRelatedPanels();
+
+            if (currentRidgeInfo.RelatedPanelFaces == null || currentRidgeInfo.RelatedPanelFaces.Count < 1)
+                return targetTopPoint;
+
+            PlanarFace relatedFace = currentRidgeInfo.RelatedPanelFaces[0] as PlanarFace;
+
+            if (relatedFace == null)
+                return targetTopPoint;
+
+            Line ridgeLine = currentRidgeInfo.Curve as Line;
+
+            if (ridgeLine == null)
+                return targetTopPoint;
+
+            XYZ ridgeDirection = ridgeLine.Direction;
+            XYZ ridgeDirectionCrossed = ridgeDirection.CrossProduct(XYZ.BasisZ);
+
+            XYZ projectedPoint = targetTopPoint.Add(ridgeDirectionCrossed.Multiply(0.1));
+            IntersectionResult iResult = relatedFace.Project(projectedPoint);
+
+            if (iResult == null)
+            {
+                projectedPoint = targetTopPoint.Add(ridgeDirectionCrossed.Negate().Multiply(0.1));
+                iResult = relatedFace.Project(projectedPoint);
+
+                if (iResult == null)
+                    return targetTopPoint;
+            }
+
+            //Just to make sure that the targetTopPoint is located on Ridge
+            IntersectionResult ridgeProjected = ridgeLine.Project(targetTopPoint);
+            if (ridgeProjected != null)
+                targetTopPoint = ridgeProjected.XYZPoint;
+
+            XYZ roofSlopeLineDirection = Line.CreateBound(iResult.XYZPoint, targetTopPoint).Direction;
+
+            if (supportPoints == null || supportPoints.Count < 1)
+                return targetTopPoint;
+
+            //This code assumes that there are 1 or 2 supportPoints
+            XYZ supportPoint = supportPoints[0];
+
+            if (supportPoints.Count == 2)
+            {
+                XYZ supportPoints1 = supportPoints[1];
+                if (supportPoints1.DistanceTo(projectedPoint) < supportPoint.DistanceTo(projectedPoint))
+                    supportPoint = supportPoints1;
+            }
+
+            Line roofSlopeLine = Line.CreateUnbound(supportPoint, roofSlopeLineDirection);
+            Line roofRidgeLine = Line.CreateUnbound(targetTopPoint, XYZ.BasisZ);
+
+            IntersectionResultArray iResultArrCurves = null;
+            roofSlopeLine.Intersect(roofRidgeLine, out iResultArrCurves);
+
+            if (iResultArrCurves != null && iResultArrCurves.Size == 1)
+            {
+                return iResultArrCurves.get_Item(0).XYZPoint;
+            }
+
+
+
+            return targetTopPoint;
         }
 
     }

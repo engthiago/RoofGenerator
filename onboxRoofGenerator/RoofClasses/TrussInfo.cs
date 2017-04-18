@@ -86,23 +86,11 @@ namespace onboxRoofGenerator.RoofClasses
                 if (supportPoint0 == null || supportPoint1 == null)
                     return trussInfo;
 
+                currentTopPoint = GeometrySupport.AdjustTopPointToRoofAngle(currentTopPoint, new List<XYZ> { supportPoint0, supportPoint1 }, currentEdgeInfo);
                 trussInfo = GeometrySupport.GetTrussInfo(currentTopPoint, supportPoint0, supportPoint1);
 
                 if (trussInfo == null)
                     return trussInfo;
-
-                #region When we get the points from a valley we need to adjust the height of the truss
-
-                ReferenceIntersector refIntersect = new ReferenceIntersector(currentEdgeInfo.CurrentRoof.Id, FindReferenceTarget.Element, currentEdgeInfo.CurrentRoof.Document.ActiveView as View3D);
-                ReferenceWithContext refContext = refIntersect.FindNearest(supportPoint0, XYZ.BasisZ);
-
-                if (refContext != null)
-                {
-                    double dist = supportPoint0.DistanceTo(new XYZ(supportPoint0.X, supportPoint0.Y, refContext.GetReference().GlobalPoint.Z));
-                    trussInfo.Height = trussInfo.Height - dist;
-                }
-
-                #endregion
 
                 return trussInfo;
 
@@ -115,7 +103,8 @@ namespace onboxRoofGenerator.RoofClasses
 
                 XYZ projectedPointOnEave = currentSupportPoints[0];
                 XYZ projectedPointOnRidge = new XYZ(currentTopPoint.X, currentTopPoint.Y, projectedPointOnEave.Z);
-
+                
+                currentTopPoint = GeometrySupport.AdjustTopPointToRoofAngle(currentTopPoint, new List<XYZ> { projectedPointOnEave }, currentEdgeInfo);
                 double height = currentTopPoint.DistanceTo(projectedPointOnRidge);
 
                 trussInfo = new TrussInfo(projectedPointOnEave, projectedPointOnRidge, height);
@@ -141,6 +130,7 @@ namespace onboxRoofGenerator.RoofClasses
                 if (firstPointOnEave == null || secondPointOnEave == null)
                     return trussInfo;
 
+                currentTopPoint = GeometrySupport.AdjustTopPointToRoofAngle(currentTopPoint, new List<XYZ> { firstPointOnEave, secondPointOnEave }, currentEdgeInfo);
                 trussInfo = GeometrySupport.GetTrussInfo(currentTopPoint, firstPointOnEave, secondPointOnEave);
 
                 if (trussInfo == null)
