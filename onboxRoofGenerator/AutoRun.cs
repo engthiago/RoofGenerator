@@ -75,10 +75,29 @@ namespace onboxRoofGenerator
                 Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
 
                 IList<PlanarFace> pfaces = new List<PlanarFace>();
-                Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
+                Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof)
                     , currentFootPrintRoof, out pfaces);
 
-                RoofClasses.EdgeInfo currentRidgeInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
+                IList<RoofClasses.EdgeInfo> currentEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
+
+                Curve currentCurve= Support.GetMostSimilarRidgeLine(edge.AsCurve(), currentEdgeInfoList);
+                RoofClasses.EdgeInfo currentRidgeInfo = Support.GetCurveInformation(currentFootPrintRoof, currentCurve, pfaces);
+
+                #region DEBUG ONLY
+#if DEBUG
+                using (Transaction ta = new Transaction(doc, "Line test"))
+                {
+                    ta.Start();
+
+                    Frame fr = new Frame(currentRidgeInfo.Curve.Evaluate(0.5, true), XYZ.BasisX, XYZ.BasisY, XYZ.BasisZ);
+                    SketchPlane skp = SketchPlane.Create(doc, Plane.Create(fr));
+                    doc.Create.NewModelCurve(currentRidgeInfo.Curve, skp);
+
+
+                    ta.Commit();
+                }
+#endif 
+                #endregion
 
                 Line currentRidgeLine = currentRidgeInfo.Curve as Line;
 
@@ -97,7 +116,7 @@ namespace onboxRoofGenerator
 
                     //We can safely convert because the selection filter does not select anything that is not a curve locatated
                     Curve currentElementCurve = (currentTrussBaseElem.Location as LocationCurve).Curve;
-                    Line ridgeLine = edge.AsCurve() as Line;
+                    Line ridgeLine = currentCurve as Line;
 
                     if (ridgeLine != null)
                     {
@@ -126,7 +145,9 @@ namespace onboxRoofGenerator
                 }
 
                 if (baseSupportPoint == null)
-                    baseSupportPoint = currentReference.GlobalPoint;
+                {
+                    baseSupportPoint = currentRidgeLine.Project(currentReference.GlobalPoint).XYZPoint;
+                }
 
 
                 Managers.TrussManager currentTrussManager = new Managers.TrussManager();
@@ -263,10 +284,13 @@ namespace onboxRoofGenerator
             Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
 
             IList<PlanarFace> pfaces = new List<PlanarFace>();
-            Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
+            Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof)
                 , currentFootPrintRoof, out pfaces);
 
-            RoofClasses.EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
+            IList<RoofClasses.EdgeInfo> currentEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
+            Curve currentCurve = Support.GetMostSimilarRidgeLine(edge.AsCurve(), currentEdgeInfoList);
+
+            RoofClasses.EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, currentCurve, pfaces);
             TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());
 
             Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();

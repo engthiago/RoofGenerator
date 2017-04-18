@@ -62,17 +62,9 @@ namespace onboxRoofGenerator.RoofClasses
                 Edge currentEdge = Support.GetEdgeFromReference(reference, currentFootPrintRoof);
 
                 IList<PlanarFace> pfaces = new List<PlanarFace>();
-
-                //Uncomment this an comment the other one if wants to select top and bottom Ridges
-                //Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
-                //, currentFootPrintRoof, out pfaces);
-
-                //Comment this an uncomment the other one if wants to select top and bottom Ridges
-                Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof), currentFootPrintRoof, out pfaces);
-
+                Support.IsListOfPlanarFaces(HostObjectUtils.GetTopFaces(currentFootPrintRoof), currentFootPrintRoof, out pfaces);
+                                
                 EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, currentEdge.AsCurve(), pfaces);
-
-                System.Diagnostics.Debug.WriteLine(currentInfo.RoofLineType.ToString());
 
                 if (currentInfo.RoofLineType != RoofLineType.Ridge && currentInfo.RoofLineType != RoofLineType.RidgeSinglePanel)
                     return false;

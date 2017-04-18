@@ -501,6 +501,43 @@ namespace onboxRoofGenerator
             }
             return resultingListOfEdgeInfo;
         }
+
+        static internal Curve GetMostSimilarRidgeLine(Curve targetCurve, IList<EdgeInfo> edgeInfoList)
+        {
+            Curve edgeInfoToReturn = null;
+            if (edgeInfoList == null)
+                return edgeInfoToReturn;
+
+            Line edgeLine = targetCurve as Line;
+
+            if (edgeLine == null)
+                return edgeInfoToReturn;
+
+            double minDistance = double.MaxValue;
+            foreach (EdgeInfo currentEdgeInfo in edgeInfoList)
+            {
+                if (currentEdgeInfo.RoofLineType != RoofLineType.Ridge && currentEdgeInfo.RoofLineType != RoofLineType.RidgeSinglePanel)
+                    continue;
+
+                Line currentEdgeInfoLine = currentEdgeInfo.Curve as Line;
+
+                if (currentEdgeInfoLine == null)
+                    continue;
+
+                if (!Math.Abs(edgeLine.Direction.DotProduct(currentEdgeInfoLine.Direction)).IsAlmostEqualTo(1))
+                    continue;
+
+                double currentDistance = currentEdgeInfoLine.Distance(currentEdgeInfoLine.Evaluate(0.5, true));
+
+                if (currentDistance < minDistance)
+                {
+                    minDistance = currentDistance;
+                    edgeInfoToReturn = currentEdgeInfo.Curve;
+                }
+            }
+
+            return edgeInfoToReturn;
+        }
     }
 
     class GeometrySupport
