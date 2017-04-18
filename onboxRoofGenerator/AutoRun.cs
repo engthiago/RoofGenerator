@@ -243,9 +243,12 @@ namespace onboxRoofGenerator
                 return Result.Failed;
             }
 
-            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Edge);
-            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
-            Edge edge = currentFootPrintRoof.GetGeometryObjectFromReference(currentReference) as Edge;
+            Reference currentRoofReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado");
+            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentRoofReference) as FootPrintRoof;
+
+            ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(currentFootPrintRoof);
+            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Edge, ridgeSelectionFilter);
+            Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
 
             IList<PlanarFace> pfaces = new List<PlanarFace>();
             Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
