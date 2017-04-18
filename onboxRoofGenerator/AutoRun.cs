@@ -81,11 +81,19 @@ namespace onboxRoofGenerator
 
                 RoofClasses.EdgeInfo currentRidgeInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
 
-                ISelectionFilter currentTrussBaseSupport = new RoofClasses.SelectionFilters.SupportsSelectionFilter();
+                Line currentRidgeLine = currentRidgeInfo.Curve as Line;
+
+                if (currentRidgeLine == null)
+                {
+                    message = "Ridge must be a straight line";
+                    return Result.Failed;
+                }
+
+                ISelectionFilter currentTrussBaseSupportFilter = new RoofClasses.SelectionFilters.SupportsSelectionFilter(currentRidgeLine.Direction.CrossProduct(XYZ.BasisZ));
                 XYZ baseSupportPoint = null;
                 try
                 {
-                    Reference currentTrussBaseRef = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "Selecione uma base para a treliça ou (ESC) para ignorar");
+                    Reference currentTrussBaseRef = sel.PickObject(ObjectType.Element, currentTrussBaseSupportFilter, "Selecione uma base para a treliça ou (ESC) para ignorar");
                     Element currentTrussBaseElem = doc.GetElement(currentTrussBaseRef.ElementId);
 
                     //We can safely convert because the selection filter does not select anything that is not a curve locatated
@@ -127,35 +135,40 @@ namespace onboxRoofGenerator
                 Line currentSupport0ElemLine = null;
                 Line currentSupport1ElemLine = null;
 
+                currentTrussBaseSupportFilter = new RoofClasses.SelectionFilters.SupportsSelectionFilter(currentRidgeLine.Direction);
+
                 if (currentRidgeInfo.RoofLineType == RoofClasses.RoofLineType.Ridge)
                 {
                     try
                     {
-                        Reference currentSupport0Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "O primeiro suporte para a treliça");
+                        Reference currentSupport0Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupportFilter, "O primeiro suporte para a treliça");
                         Element currentSupport0Elem = doc.GetElement(currentSupport0Ref.ElementId);
                         Curve currentSupport0ElemCurve = (currentSupport0Elem.Location as LocationCurve).Curve;
                         currentSupport0ElemLine = currentSupport0ElemCurve as Line;
 
-                        Reference currentSupport1Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "O segundo suporte para a treliça");
+                        Reference currentSupport1Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupportFilter, "O segundo suporte para a treliça");
                         Element currentSupport1Elem = doc.GetElement(currentSupport1Ref.ElementId);
                         Curve currentSupport1ElemCurve = (currentSupport1Elem.Location as LocationCurve).Curve;
                         currentSupport1ElemLine = currentSupport1ElemCurve as Line;
                     }
                     catch
                     {
+                        currentSupport0ElemLine = null;
+                        currentSupport1ElemLine = null;
                     }
                 }
                 else if (currentRidgeInfo.RoofLineType == RoofClasses.RoofLineType.RidgeSinglePanel)
                 {
                     try
                     {
-                        Reference currentSupport0Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "O suporte para a treliça");
+                        Reference currentSupport0Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupportFilter, "O suporte para a treliça");
                         Element currentSupport0Elem = doc.GetElement(currentSupport0Ref.ElementId);
                         Curve currentSupport0ElemCurve = (currentSupport0Elem.Location as LocationCurve).Curve;
                         currentSupport0ElemLine = currentSupport0ElemCurve as Line;
                     }
                     catch
                     {
+                        currentSupport0ElemLine = null;
                     }
                 }
 

@@ -73,6 +73,13 @@ namespace onboxRoofGenerator.RoofClasses
 
         internal class SupportsSelectionFilter : ISelectionFilter
         {
+            XYZ Direction { get; set; }
+
+            public SupportsSelectionFilter(XYZ targetDirection)
+            {
+                Direction = targetDirection;
+            }
+
             public bool AllowElement(Element elem)
             {
                 if (elem.Category.Id.IntegerValue == BuiltInCategory.OST_Walls.GetHashCode() ||
@@ -87,7 +94,12 @@ namespace onboxRoofGenerator.RoofClasses
                         if (elemLocationCurve is Line 
                            // || elemLocationCurve is Arc
                             )
-                            return true;
+                        {
+                            Line elemLocationLine = elemLocationCurve as Line;
+
+                            if (Math.Abs(elemLocationLine.Direction.DotProduct(Direction)).IsAlmostEqualTo(1, 0.02))
+                                return true;
+                        }
                         
 
                     }
