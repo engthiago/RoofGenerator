@@ -50,42 +50,141 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
-    class DetectEavePoints : IExternalCommand
+    class CreateTrussSelectingSupport : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
+            Selection sel = uidoc.Selection;
 
-            //if ((uidoc.ActiveView as View3D) == null)
-            //{
-            //    message = "Por favor, rode este comando em uma vista 3d";
-            //    return Result.Failed;
-            //}
+            try
+            {
+                Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
+                if (tTypeElement == null)
+                {
+                    message = "Nenhum tipo de treliça foi encontrada no projeto, por favor, carregue um tipo e rode este comando novamente";
+                    return Result.Failed;
+                }
+                TrussType tType = tTypeElement as TrussType;
 
-            //Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado.");
-            //FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference.ElementId) as FootPrintRoof;
+                Reference currentRoofReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado");
+                FootPrintRoof currentFootPrintRoof = doc.GetElement(currentRoofReference) as FootPrintRoof;
 
-            //IList<RoofClasses.EdgeInfo> currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
+                ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(currentFootPrintRoof);
+                Reference currentReference = sel.PickObject(ObjectType.Edge, ridgeSelectionFilter);
+                Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
 
-            //using (Transaction t2 = new Transaction(doc, "Points"))
-            //{
-            //    t2.Start();
-            //    foreach (RoofClasses.EdgeInfo currentEdgeInfo in currentRoofEdgeInfoList)
-            //    {
-            //        if (currentEdgeInfo.RoofLineType == RoofClasses.RoofLineType.Ridge || currentEdgeInfo.RoofLineType == RoofClasses.RoofLineType.RidgeSinglePanel)
-            //        {
-            //            IList<XYZ> currentPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(3);
-            //            FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
-            //            foreach (XYZ currentPoint in currentPoints)
-            //            {
-            //                doc.Create.NewFamilyInstance(currentPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-            //            }
-            //        }
-            //    }
-            //    t2.Commit();
-            //}
+                IList<PlanarFace> pfaces = new List<PlanarFace>();
+                Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
+                    , currentFootPrintRoof, out pfaces);
 
+                RoofClasses.EdgeInfo currentRidgeInfo = Support.GetCurveInformation(currentFootPrintRoof, edge.AsCurve(), pfaces);
+
+                ISelectionFilter currentTrussBaseSupport = new RoofClasses.SelectionFilters.SupportsSelectionFilter();
+                XYZ baseSupportPoint = null;
+                try
+                {
+                    Reference currentTrussBaseRef = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "Selecione uma base para a treliça ou (ESC) para ignorar");
+                    Element currentTrussBaseElem = doc.GetElement(currentTrussBaseRef.ElementId);
+
+                    //We can safely convert because the selection filter does not select anything that is not a curve locatated
+                    Curve currentElementCurve = (currentTrussBaseElem.Location as LocationCurve).Curve;
+                    Line ridgeLine = edge.AsCurve() as Line;
+
+                    if (ridgeLine != null)
+                    {
+                        if (currentElementCurve is Line)
+                        {
+                            Line currentSupportLine = currentElementCurve as Line;
+                            double height = currentRidgeInfo.GetCurrentRoofHeight();
+                            ridgeLine = ridgeLine.Flatten(height);
+                            currentSupportLine = currentSupportLine.Flatten(height);
+
+                            IntersectionResultArray iResutArr = new IntersectionResultArray();
+                            SetComparisonResult compResult = ridgeLine.Intersect(currentSupportLine, out iResutArr);
+
+                            if (iResutArr.Size == 1)
+                            {
+                                IntersectionResult iResult = iResutArr.get_Item(0);
+                                if (iResult != null)
+                                    baseSupportPoint = currentRidgeInfo.Curve.Project(iResult.XYZPoint).XYZPoint;
+                            }
+                        }
+                    }
+
+                }
+                catch
+                {
+                }
+
+                if (baseSupportPoint == null)
+                    baseSupportPoint = currentReference.GlobalPoint;
+
+
+                Managers.TrussManager currentTrussManager = new Managers.TrussManager();
+
+                Line currentSupport0ElemLine = null;
+                Line currentSupport1ElemLine = null;
+
+                if (currentRidgeInfo.RoofLineType == RoofClasses.RoofLineType.Ridge)
+                {
+                    try
+                    {
+                        Reference currentSupport0Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "O primeiro suporte para a treliça");
+                        Element currentSupport0Elem = doc.GetElement(currentSupport0Ref.ElementId);
+                        Curve currentSupport0ElemCurve = (currentSupport0Elem.Location as LocationCurve).Curve;
+                        currentSupport0ElemLine = currentSupport0ElemCurve as Line;
+
+                        Reference currentSupport1Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "O segundo suporte para a treliça");
+                        Element currentSupport1Elem = doc.GetElement(currentSupport1Ref.ElementId);
+                        Curve currentSupport1ElemCurve = (currentSupport1Elem.Location as LocationCurve).Curve;
+                        currentSupport1ElemLine = currentSupport1ElemCurve as Line;
+                    }
+                    catch
+                    {
+                    }
+                }
+                else if (currentRidgeInfo.RoofLineType == RoofClasses.RoofLineType.RidgeSinglePanel)
+                {
+                    try
+                    {
+                        Reference currentSupport0Ref = sel.PickObject(ObjectType.Element, currentTrussBaseSupport, "O suporte para a treliça");
+                        Element currentSupport0Elem = doc.GetElement(currentSupport0Ref.ElementId);
+                        Curve currentSupport0ElemCurve = (currentSupport0Elem.Location as LocationCurve).Curve;
+                        currentSupport0ElemLine = currentSupport0ElemCurve as Line;
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                RoofClasses.TrussInfo currentTrussInfo = currentTrussManager.CreateTrussFromRidgeWithSupports(baseSupportPoint, currentRidgeInfo, tType, currentSupport0ElemLine, currentSupport1ElemLine);
+
+                #region DEBUG ONLY
+                if (currentReference != null)
+                {
+#if DEBUG
+                    using (Transaction t = new Transaction(doc, "ReferencePoint"))
+                    {
+                        t.Start();
+                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                        doc.Create.NewFamilyInstance(baseSupportPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                        t.Commit();
+                    }
+#endif
+                }
+
+                #endregion
+
+            }
+            catch (Exception e)
+            {
+                if (!(e is Autodesk.Revit.Exceptions.OperationCanceledException))
+                {
+                    throw e;
+                }
+            }
 
             return Result.Succeeded;
         }

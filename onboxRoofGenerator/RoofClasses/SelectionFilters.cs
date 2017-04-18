@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,82 @@ namespace onboxRoofGenerator.RoofClasses
                     return true;
                 else
                     return false;
+            }
+
+            public bool AllowReference(Reference reference, XYZ position)
+            {
+                return false;
+            }
+        }
+
+        internal class RidgeSelectionFilter : ISelectionFilter
+        {
+            private FootPrintRoof currentFootPrintRoof;
+
+            public RidgeSelectionFilter(FootPrintRoof targetFootPrintRoof)
+            {
+                currentFootPrintRoof = targetFootPrintRoof;
+            }
+
+            public bool AllowElement(Element elem)
+            {
+                if (elem.Id == currentFootPrintRoof.Id)
+                    return true;
+                else
+                    return false;
+            }
+
+            public bool AllowReference(Reference reference, XYZ position)
+            {
+                if (currentFootPrintRoof == null)
+                    return false;
+
+                Edge currentEdge = Support.GetEdgeFromReference(reference, currentFootPrintRoof);
+
+                IList<PlanarFace> pfaces = new List<PlanarFace>();
+
+                //Uncomment this an comment the other one if wants to select top and bottom Ridges
+                //Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof).Union(HostObjectUtils.GetTopFaces(currentFootPrintRoof)).ToList()
+                //, currentFootPrintRoof, out pfaces);
+
+                //Comment this an uncomment the other one if wants to select top and bottom Ridges
+                Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof), currentFootPrintRoof, out pfaces);
+
+                EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, currentEdge.AsCurve(), pfaces);
+
+                System.Diagnostics.Debug.WriteLine(currentInfo.RoofLineType.ToString());
+
+                if (currentInfo.RoofLineType != RoofLineType.Ridge && currentInfo.RoofLineType != RoofLineType.RidgeSinglePanel)
+                    return false;
+
+                return true;
+            }
+        }
+
+        internal class SupportsSelectionFilter : ISelectionFilter
+        {
+            public bool AllowElement(Element elem)
+            {
+                if (elem.Category.Id.IntegerValue == BuiltInCategory.OST_Walls.GetHashCode() ||
+                    elem.Category.Id.IntegerValue == BuiltInCategory.OST_StructuralFraming.GetHashCode() //||
+                    //elem is ReferencePlane
+                        )
+                {
+                    if (elem.Location is LocationCurve)
+                    {
+                        Curve elemLocationCurve = (elem.Location as LocationCurve).Curve;
+
+                        if (elemLocationCurve is Line 
+                           // || elemLocationCurve is Arc
+                            )
+                            return true;
+                        
+
+                    }
+                }
+
+
+                return false;
             }
 
             public bool AllowReference(Reference reference, XYZ position)

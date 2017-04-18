@@ -75,31 +75,138 @@ namespace onboxRoofGenerator.Managers
             return trussInfoList;
         }
 
+        public TrussInfo CreateTrussFromRidgeWithSupports(XYZ currentPointOnRidge, EdgeInfo currentRidgeEdgeInfo, TrussType tType, Line support0, Line support1)
+        {
+            TrussInfo currentTrussInfo = null;
+
+            Document doc = currentRidgeEdgeInfo.CurrentRoof.Document;
+            if (doc == null)
+                return currentTrussInfo;
+
+            IList<XYZ> currentSupportPoints = new List<XYZ>();
+            double roofheight = currentRidgeEdgeInfo.GetCurrentRoofHeight();
+
+            Line currentRidgeLineFlatten = (currentRidgeEdgeInfo.Curve as Line).Flatten(roofheight);
+
+            if (currentRidgeLineFlatten == null)
+                return currentTrussInfo;
+
+            XYZ crossDirection = currentRidgeLineFlatten.Direction.CrossProduct(XYZ.BasisZ);
+            XYZ currentPointOnRidgeFlatten = new XYZ(currentPointOnRidge.X, currentPointOnRidge.Y, roofheight);
+
+            Line currentCrossedLineInfinite = Line.CreateBound(currentPointOnRidgeFlatten, currentPointOnRidgeFlatten.Add(crossDirection));
+            currentCrossedLineInfinite.MakeUnbound();
+
+            if (support0 != null)
+            {
+                IntersectionResultArray iResultArr = new IntersectionResultArray();
+                SetComparisonResult iResulComp = currentCrossedLineInfinite.Intersect(support0.Flatten(roofheight), out iResultArr);
+                if (iResultArr != null && iResultArr.Size == 1)
+                {
+                    currentSupportPoints.Add(iResultArr.get_Item(0).XYZPoint);
+                }
+            }
+            if (support1 != null)
+            {
+                IntersectionResultArray iResultArr = new IntersectionResultArray();
+                SetComparisonResult iResulComp = currentCrossedLineInfinite.Intersect(support1.Flatten(roofheight), out iResultArr);
+                if (iResultArr != null && iResultArr.Size == 1)
+                {
+                    currentSupportPoints.Add(iResultArr.get_Item(0).XYZPoint);
+                }
+            }
+
+            using (Transaction t = new Transaction(doc, "Criar treliça"))
+            {
+                t.Start();
+
+                #region DEBUG ONLY
+
+#if DEBUG
+                try
+                {
+                    if (currentSupportPoints[0] != null)
+                    {
+                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                        doc.Create.NewFamilyInstance(currentSupportPoints[0], fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    }
+
+                    if (currentSupportPoints[1] != null)
+                    {
+                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                        doc.Create.NewFamilyInstance(currentSupportPoints[1], fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    }
+                }
+                catch
+                {
+                }
+#endif
+
+                #endregion
+
+
+                currentTrussInfo = CreateTrussInfo(doc, currentPointOnRidge, currentRidgeEdgeInfo, currentSupportPoints, tType);
+                t.Commit();
+            }
+
+            return currentTrussInfo;
+        }
+
+        private TrussInfo CreateTrussInfo(Document doc, XYZ currentPointOnRidge, EdgeInfo currentRidgeEdgeInfo, IList<XYZ> currentSupportPoints, TrussType tType)
+        {
+
+            TrussInfo currentTrussInfo = TrussInfo.BuildTrussAtRidge(currentPointOnRidge, currentRidgeEdgeInfo, currentSupportPoints);
+
+            if (currentTrussInfo != null)
+            {
+                SketchPlane stkP = SketchPlane.Create(doc, currentRidgeEdgeInfo.CurrentRoof.LevelId);
+
+                double levelHeight = currentRidgeEdgeInfo.GetCurrentRoofHeight();
+
+                XYZ firstPoint = new XYZ(currentTrussInfo.FirstPoint.X, currentTrussInfo.FirstPoint.Y, levelHeight);
+                XYZ secondPoint = new XYZ(currentTrussInfo.SecondPoint.X, currentTrussInfo.SecondPoint.Y, levelHeight);
+                Truss currentTruss = Truss.Create(doc, tType.Id, stkP.Id, Line.CreateBound(firstPoint, secondPoint));
+
+                currentTruss.get_Parameter(BuiltInParameter.TRUSS_HEIGHT).Set(currentTrussInfo.Height);
+            }
+            #region DEBUG ONLY
+            else
+            {
+#if DEBUG
+                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                doc.Create.NewFamilyInstance(currentPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+#endif
+            }
+            #endregion
+
+            return currentTrussInfo;
+        }
+
         private IList<TrussInfo> CreateTrussInfoList(EdgeInfo currentRidgeEdgeInfo, Document doc, TrussType tType)
         {
             IList<TrussInfo> trussInfoList = new List<TrussInfo>();
 
             if (currentRidgeEdgeInfo.RoofLineType == RoofLineType.RidgeSinglePanel || currentRidgeEdgeInfo.RoofLineType == RoofLineType.Ridge)
             {
-                Line currentRidgeWithSupports = currentRidgeEdgeInfo.Curve as Line;
+                Line currentRidgeLineShortenedBySupports = currentRidgeEdgeInfo.Curve as Line;
 
-                if (currentRidgeWithSupports == null)
+                if (currentRidgeLineShortenedBySupports == null)
                     return trussInfoList;
 
                 IList<EdgeInfo> startConditions = currentRidgeEdgeInfo.GetEndConditions(0);
                 IList<EdgeInfo> endConditions = currentRidgeEdgeInfo.GetEndConditions(1);
 
-                currentRidgeWithSupports = ShortenRidgeIfNecessary(currentRidgeWithSupports, startConditions, endConditions);
+                currentRidgeLineShortenedBySupports = ShortenRidgeIfNecessary(currentRidgeLineShortenedBySupports, startConditions, endConditions);
 
-                Tuple<int, double> iterations = Utils.Utils.EstabilishIterations(currentRidgeWithSupports.ApproximateLength, trussDistance);
+                Tuple<int, double> iterations = Utils.Utils.EstabilishIterations(currentRidgeLineShortenedBySupports.ApproximateLength, trussDistance);
                 int numPoints = iterations.Item1;
                 double distance = iterations.Item2;
 
                 for (int i = 0; i <= numPoints; i++)
                 {
                     double currentParam = i * distance;
-                    XYZ currentPointOnRidge = currentRidgeWithSupports.Evaluate(currentRidgeWithSupports.GetEndParameter(0) + currentParam, false);
-                    TrussInfo currentTrussInfo = TrussInfo.BuildTrussAtRidge(currentPointOnRidge, currentRidgeEdgeInfo);
+                    XYZ currentPointOnRidge = currentRidgeLineShortenedBySupports.Evaluate(currentRidgeLineShortenedBySupports.GetEndParameter(0) + currentParam, false);
+                    TrussInfo currentTrussInfo = TrussInfo.BuildTrussAtRidge(currentPointOnRidge, currentRidgeEdgeInfo, null);
 
                     if (currentTrussInfo != null)
                     {
@@ -128,6 +235,7 @@ namespace onboxRoofGenerator.Managers
 
             return trussInfoList;
         }
+
 
         private Line ShortenRidgeIfNecessary(Line currentRidgeWithSupports, IList<EdgeInfo> startConditions, IList<EdgeInfo> endConditions)
         {

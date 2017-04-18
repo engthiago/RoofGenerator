@@ -59,7 +59,7 @@ namespace onboxRoofGenerator
             return currentFace;
         }
 
-        static private Edge GetEdgeFromReference(Reference targetReference, Element targetElement)
+        static internal Edge GetEdgeFromReference(Reference targetReference, Element targetElement)
         {
             Edge currentEdge = null;
             if (targetReference != null && targetElement != null)

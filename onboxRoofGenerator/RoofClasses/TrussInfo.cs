@@ -33,16 +33,18 @@ namespace onboxRoofGenerator.RoofClasses
             return null;
         }
 
-        static public TrussInfo BuildTrussAtRidge(XYZ currentPointOnRidge, EdgeInfo currentEdgeInfo)
+        static public TrussInfo BuildTrussAtRidge(XYZ currentPointOnRidge, EdgeInfo currentEdgeInfo, IList<XYZ> currentSupportPoints)
         {
             TrussInfo trussInfo = null;
-        
+
             XYZ currentTopPoint = currentEdgeInfo.GetTrussTopPoint(currentPointOnRidge);
             //If we cant get the point that means that the projection failed
             if (currentTopPoint == null)
                 return trussInfo;
 
-            IList<XYZ> currentSupportPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(currentPointOnRidge);
+            if (currentSupportPoints == null || currentSupportPoints.Count == 0)
+                currentSupportPoints = currentEdgeInfo.ProjectSupportPointsOnRoof(currentPointOnRidge);
+
             if (currentSupportPoints.Count == 0)
             {
                 if (currentEdgeInfo.RoofLineType != RoofLineType.Ridge)
@@ -56,7 +58,7 @@ namespace onboxRoofGenerator.RoofClasses
                 EdgeInfo edge0 = endConditionList[0];
                 EdgeInfo edge1 = endConditionList[1];
 
-                if ((edge0.RoofLineType != RoofLineType.Valley && edge0.RoofLineType != RoofLineType.Gable) || 
+                if ((edge0.RoofLineType != RoofLineType.Valley && edge0.RoofLineType != RoofLineType.Gable) ||
                     edge1.RoofLineType != RoofLineType.Valley && edge1.RoofLineType != RoofLineType.Gable)
                     return trussInfo;
 

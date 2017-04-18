@@ -57,8 +57,8 @@ namespace onboxRoofGenerator.RoofClasses
                 return currentPointOnRidge;
 
             //If the is not a Ridge this MUST be a SinglePanelRidge
-            if (RoofLineType != RoofLineType.RidgeSinglePanel)
-                throw new Exception("The ridge must be either single panel or regular rigde!");
+            if (RoofLineType == RoofLineType.RidgeSinglePanel)
+                return currentPointOnRidge;
 
             Line currentRidgeLine = Curve.Clone() as Line;
             if (currentRidgeLine == null)
