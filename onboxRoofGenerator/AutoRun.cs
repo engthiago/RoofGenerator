@@ -25,7 +25,7 @@ namespace onboxRoofGenerator
                 return Result.Failed;
             }
 
-            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.FootPrintRoofSelFilter(), "Selecione um telhado.");
+            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.StraightLinesAndFacesFootPrintRoofSelFilter(), "Selecione um telhado.");
             FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
 
             //TODO if the footprint contains something other than lines (straight lines) warn the user and exit
@@ -68,7 +68,7 @@ namespace onboxRoofGenerator
                 }
                 TrussType tType = tTypeElement as TrussType;
 
-                ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(doc);
+                ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.StraightLinesAndFacesRidgeSelectionFilter(doc);
                 Reference currentReference = sel.PickObject(ObjectType.Edge, ridgeSelectionFilter);
 
                 FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
@@ -277,7 +277,7 @@ namespace onboxRoofGenerator
             }
 
 
-            ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.RidgeSelectionFilter(doc);
+            ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.StraightLinesAndFacesRidgeSelectionFilter(doc);
             Reference currentReference = uidoc.Selection.PickObject(ObjectType.Edge, ridgeSelectionFilter);
             
             FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;

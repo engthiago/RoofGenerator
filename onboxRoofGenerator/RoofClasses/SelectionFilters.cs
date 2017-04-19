@@ -11,14 +11,19 @@ namespace onboxRoofGenerator.RoofClasses
 {
     class SelectionFilters
     {
-        internal class FootPrintRoofSelFilter : ISelectionFilter
+        internal class StraightLinesAndFacesFootPrintRoofSelFilter : ISelectionFilter
         {
             public bool AllowElement(Element elem)
             {
                 if ((elem as FootPrintRoof) != null)
-                    return true;
-                else
-                    return false;
+                {
+                    FootPrintRoof currentFootPrintRoof = elem as FootPrintRoof;
+
+                    IList<PlanarFace> pfaces = new List<PlanarFace>();
+                    if (Support.IsListOfPlanarFaces(HostObjectUtils.GetTopFaces(currentFootPrintRoof), currentFootPrintRoof, out pfaces))
+                        return true;
+                }
+                return false;
             }
 
             public bool AllowReference(Reference reference, XYZ position)
@@ -27,11 +32,11 @@ namespace onboxRoofGenerator.RoofClasses
             }
         }
 
-        internal class RidgeSelectionFilter : ISelectionFilter
+        internal class StraightLinesAndFacesRidgeSelectionFilter : ISelectionFilter
         {
             private Document doc;
 
-            public RidgeSelectionFilter(Document targetDocument)
+            public StraightLinesAndFacesRidgeSelectionFilter(Document targetDocument)
             {
                 doc = targetDocument;
             }
@@ -48,7 +53,7 @@ namespace onboxRoofGenerator.RoofClasses
             {
                 if (doc == null)
                     return false;
-                
+
                 Element currentFootPrintElem = doc.GetElement(reference);
 
                 if (currentFootPrintElem == null)
@@ -63,7 +68,7 @@ namespace onboxRoofGenerator.RoofClasses
 
                 IList<PlanarFace> pfaces = new List<PlanarFace>();
                 Support.IsListOfPlanarFaces(HostObjectUtils.GetTopFaces(currentFootPrintRoof), currentFootPrintRoof, out pfaces);
-                                
+
                 EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, currentEdge.AsCurve(), pfaces);
 
                 System.Diagnostics.Debug.WriteLine(currentInfo.RoofLineType.ToString());
@@ -88,15 +93,15 @@ namespace onboxRoofGenerator.RoofClasses
             {
                 if (elem.Category.Id.IntegerValue == BuiltInCategory.OST_Walls.GetHashCode() ||
                     elem.Category.Id.IntegerValue == BuiltInCategory.OST_StructuralFraming.GetHashCode() //||
-                    //elem is ReferencePlane
+                                                                                                         //elem is ReferencePlane
                         )
                 {
                     if (elem.Location is LocationCurve)
                     {
                         Curve elemLocationCurve = (elem.Location as LocationCurve).Curve;
 
-                        if (elemLocationCurve is Line 
-                           // || elemLocationCurve is Arc
+                        if (elemLocationCurve is Line
+                            // || elemLocationCurve is Arc
                             )
                         {
                             Line elemLocationLine = elemLocationCurve as Line;
@@ -104,7 +109,7 @@ namespace onboxRoofGenerator.RoofClasses
                             if (Math.Abs(elemLocationLine.Direction.DotProduct(Direction)).IsAlmostEqualTo(1, 0.02))
                                 return true;
                         }
-                        
+
 
                     }
                 }
