@@ -338,6 +338,21 @@ namespace onboxRoofGenerator.RoofClasses
                 if (currentElem.Location == null) continue;
                 if (currentElem.Location as LocationCurve == null) continue;
 
+                //Prevents that the truss uses Structural Beams hosted on other Trusses as supports
+                if (currentElem.Category.Id.IntegerValue == BuiltInCategory.OST_StructuralFraming.GetHashCode())
+                {
+                    FamilyInstance currentFraming = currentElem as FamilyInstance;
+                    if (currentFraming != null)
+                    {
+                        Element currentHost = currentFraming.Host;
+                        if (currentHost != null)
+                        {
+                            if (currentHost.Category.Id.IntegerValue == BuiltInCategory.OST_StructuralTruss.GetHashCode())
+                                continue;
+                        }
+                    }
+                }
+
                 Curve currentCurve = (currentElem.Location as LocationCurve).Curve;
 
                 if (optionalDirection != null)

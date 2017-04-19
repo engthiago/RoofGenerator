@@ -66,6 +66,8 @@ namespace onboxRoofGenerator.RoofClasses
                                 
                 EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, currentEdge.AsCurve(), pfaces);
 
+                System.Diagnostics.Debug.WriteLine(currentInfo.RoofLineType.ToString());
+
                 if (currentInfo.RoofLineType != RoofLineType.Ridge && currentInfo.RoofLineType != RoofLineType.RidgeSinglePanel)
                     return false;
 
