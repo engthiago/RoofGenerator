@@ -527,7 +527,7 @@ namespace onboxRoofGenerator
                 if (!Math.Abs(edgeLine.Direction.DotProduct(currentEdgeInfoLine.Direction)).IsAlmostEqualTo(1))
                     continue;
 
-                double currentDistance = currentEdgeInfoLine.Distance(currentEdgeInfoLine.Evaluate(0.5, true));
+                double currentDistance = edgeLine.Evaluate(0.5,true).DistanceTo(currentEdgeInfoLine.Evaluate(0.5, true));
 
                 if (currentDistance < minDistance)
                 {
