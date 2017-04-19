@@ -339,6 +339,7 @@ namespace onboxRoofGenerator.RoofClasses
                 if (currentElem.Location as LocationCurve == null) continue;
 
                 //Prevents that the truss uses Structural Beams hosted on other Trusses as supports
+                //In other words, prevents that the trusses uses other trusses as supports
                 if (currentElem.Category.Id.IntegerValue == BuiltInCategory.OST_StructuralFraming.GetHashCode())
                 {
                     FamilyInstance currentFraming = currentElem as FamilyInstance;
