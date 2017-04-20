@@ -119,32 +119,6 @@ namespace onboxRoofGenerator.Managers
             using (Transaction t = new Transaction(doc, "Criar treliça"))
             {
                 t.Start();
-
-                #region DEBUG ONLY
-
-#if DEBUG
-                try
-                {
-                    if (currentSupportPoints[0] != null)
-                    {
-                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
-                        doc.Create.NewFamilyInstance(currentSupportPoints[0], fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                    }
-
-                    if (currentSupportPoints[1] != null)
-                    {
-                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
-                        doc.Create.NewFamilyInstance(currentSupportPoints[1], fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                    }
-                }
-                catch
-                {
-                }
-#endif
-
-                #endregion
-
-
                 currentTrussInfo = CreateTrussInfo(doc, currentPointOnRidge, currentRidgeEdgeInfo, currentSupportPoints, tType);
                 t.Commit();
             }
@@ -169,15 +143,7 @@ namespace onboxRoofGenerator.Managers
 
                 currentTruss.get_Parameter(BuiltInParameter.TRUSS_HEIGHT).Set(currentTrussInfo.Height);
             }
-            #region DEBUG ONLY
-            else
-            {
-#if DEBUG
-                FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
-                doc.Create.NewFamilyInstance(currentPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-#endif
-            }
-            #endregion
+
 
             return currentTrussInfo;
         }

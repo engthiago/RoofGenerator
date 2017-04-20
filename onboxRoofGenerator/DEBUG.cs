@@ -12,25 +12,54 @@ namespace onboxRoofGenerator
         static public void CreateDebugPoint(Document doc, XYZ pointLocation)
         {
 
-
 #if DEBUG
-            using (Transaction t = new Transaction(doc, "ReferencePoint"))
+            if (doc != null && pointLocation != null)
             {
-                t.Start();
                 Element e = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault();
                 if (e != null)
                 {
-                    FamilySymbol fs = e as FamilySymbol;
-
-                    if (fs != null)
+                    using (Transaction t = new Transaction(doc, "ReferencePoint"))
                     {
-                        doc.Create.NewFamilyInstance(pointLocation, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                        t.Start();
+
+                        FamilySymbol fs = e as FamilySymbol;
+
+                        if (fs != null)
+                        {
+                            doc.Create.NewFamilyInstance(pointLocation, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                        }
+
+                        t.Commit();
                     }
-                }
-                t.Commit();
+                } 
             }
 #endif
 
         }
+
+
+        static public void CreateDebugFlattenLine(Document doc, Line currentLine)
+        {
+            #region DEBUG ONLY
+#if DEBUG
+            if (doc != null && currentLine != null)
+            {
+                using (Transaction ta = new Transaction(doc, "Line test"))
+                {
+                    ta.Start();
+
+                    currentLine = currentLine.Flatten();
+                    Frame fr = new Frame(currentLine.Evaluate(0.5, true), XYZ.BasisX, XYZ.BasisY, XYZ.BasisZ);
+                    SketchPlane skp = SketchPlane.Create(doc, Plane.Create(fr));
+                    doc.Create.NewModelCurve(currentLine, skp);
+
+
+                    ta.Commit();
+                } 
+            }
+#endif
+            #endregion
+        }
+
     }
 }

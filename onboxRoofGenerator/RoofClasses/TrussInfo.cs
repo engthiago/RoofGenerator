@@ -150,5 +150,46 @@ namespace onboxRoofGenerator.RoofClasses
             return trussInfo;
         }
 
+        static public TrussInfo BuildTrussAtHip(XYZ currentPointOnHip, EdgeInfo currentEdgeInfo, Element firstSupport, Element secondSupport)
+        {
+            TrussInfo trussInfoToReturn = null;
+
+            if (!(firstSupport.Location is LocationCurve) || !(secondSupport.Location is LocationCurve))
+                return trussInfoToReturn;
+
+            Line hipLine = currentEdgeInfo.Curve as Line;
+            Line firstSupportLocationLine = (firstSupport.Location as LocationCurve).Curve as Line;
+            Line secondSupportLocationLine = (secondSupport.Location as LocationCurve).Curve as Line;
+
+            if (firstSupportLocationLine == null || secondSupportLocationLine == null || hipLine == null)
+                return trussInfoToReturn;
+
+            Line currentPointCrossLine = Line.CreateBound(currentPointOnHip, currentPointOnHip.Add(hipLine.Flatten().Direction.CrossProduct(XYZ.BasisZ)));
+
+            //DEBUG.CreateDebugFlattenLine(currentEdgeInfo.CurrentRoof.Document, currentPointCrossLine);
+            //DEBUG.CreateDebugFlattenLine(currentEdgeInfo.CurrentRoof.Document, firstSupportLocationLine);
+            //DEBUG.CreateDebugFlattenLine(currentEdgeInfo.CurrentRoof.Document, secondSupportLocationLine);
+
+            XYZ firstSupportPoint = currentPointCrossLine.GetFlattenIntersection(firstSupportLocationLine);
+            XYZ secondSupportPoint = currentPointCrossLine.GetFlattenIntersection(secondSupportLocationLine);
+
+            
+            if (firstSupportPoint != null && secondSupportPoint != null)
+            {
+                double roofHeight = currentEdgeInfo.GetCurrentRoofHeight();
+                firstSupportPoint = new XYZ(firstSupportPoint.X, firstSupportPoint.Y, roofHeight);
+                secondSupportPoint = new XYZ(secondSupportPoint.X, secondSupportPoint.Y, roofHeight);
+                //DEBUG.CreateDebugPoint(currentEdgeInfo.CurrentRoof.Document, firstSupportPoint);
+                //DEBUG.CreateDebugPoint(currentEdgeInfo.CurrentRoof.Document, secondSupportPoint);
+                if (currentEdgeInfo.RoofLineType != RoofLineType.Hip)
+                    return trussInfoToReturn;
+
+                // currentTopPoint = GeometrySupport.AdjustTopPointToRoofAngle(currentTopPoint, new List<XYZ> { firstPointOnEave, secondPointOnEave }, currentEdgeInfo);
+                trussInfoToReturn = GeometrySupport.GetTrussInfo(currentPointOnHip, firstSupportPoint, secondSupportPoint);
+            }
+
+            return trussInfoToReturn;
+        }
+
     }
 }

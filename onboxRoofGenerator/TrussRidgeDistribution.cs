@@ -90,21 +90,21 @@ namespace onboxRoofGenerator
                     return Result.Failed;
                 }
 
-                #region DEBUG ONLY
-#if DEBUG
-                using (Transaction ta = new Transaction(doc, "Line test"))
-                {
-                    ta.Start();
+                //                #region DEBUG ONLY
+                //#if DEBUG
+                //                using (Transaction ta = new Transaction(doc, "Line test"))
+                //                {
+                //                    ta.Start();
 
-                    Frame fr = new Frame(currentRidgeInfo.Curve.Evaluate(0.5, true), XYZ.BasisX, XYZ.BasisY, XYZ.BasisZ);
-                    SketchPlane skp = SketchPlane.Create(doc, Plane.Create(fr));
-                    doc.Create.NewModelCurve(currentRidgeInfo.Curve, skp);
+                //                    Frame fr = new Frame(currentRidgeInfo.Curve.Evaluate(0.5, true), XYZ.BasisX, XYZ.BasisY, XYZ.BasisZ);
+                //                    SketchPlane skp = SketchPlane.Create(doc, Plane.Create(fr));
+                //                    doc.Create.NewModelCurve(currentRidgeInfo.Curve, skp);
 
 
-                    ta.Commit();
-                }
-#endif 
-                #endregion
+                //                    ta.Commit();
+                //                }
+                //#endif 
+                //                #endregion
 
                 Line currentRidgeLine = currentRidgeInfo.Curve as Line;
 
@@ -200,12 +200,12 @@ namespace onboxRoofGenerator
 
                 RoofClasses.TrussInfo currentTrussInfo = currentTrussManager.CreateTrussFromRidgeWithSupports(baseSupportPoint, currentRidgeInfo, tType, currentSupport0ElemLine, currentSupport1ElemLine);
 
-                #region DEBUG ONLY
-                
-                if (currentReference != null)
-                    DEBUG.CreateDebugPoint(doc, baseSupportPoint);
+                //#region DEBUG ONLY
 
-                #endregion
+                //if (currentReference != null)
+                //    DEBUG.CreateDebugPoint(doc, baseSupportPoint);
+
+                //#endregion
 
             }
             catch (Exception e)
@@ -276,7 +276,7 @@ namespace onboxRoofGenerator
 
             ISelectionFilter ridgeSelectionFilter = new RoofClasses.SelectionFilters.StraightLinesAndFacesRidgeSelectionFilter(doc);
             Reference currentReference = uidoc.Selection.PickObject(ObjectType.Edge, ridgeSelectionFilter);
-            
+
             FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
             Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
 

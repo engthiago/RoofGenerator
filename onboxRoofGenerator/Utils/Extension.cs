@@ -33,6 +33,30 @@ namespace onboxRoofGenerator
 
             return Line.CreateBound(firstPoint, secondPoint);
         }
+
+        static internal XYZ GetFlattenIntersection(this Line targetLine, Line secondLine)
+        {
+            if (targetLine == null || secondLine == null)
+                return null;
+
+            targetLine = targetLine.Flatten();
+            secondLine = secondLine.Flatten();
+
+            targetLine.MakeUnbound();
+
+            IntersectionResultArray iResultArr = null;
+            targetLine.Intersect(secondLine, out iResultArr);
+
+            if (iResultArr == null)
+                return null;
+
+            IntersectionResult iResult = iResultArr.get_Item(0);
+
+            if (iResult == null)
+                return null;
+
+            return iResult.XYZPoint;
+        }
           
         static internal bool IsAlmostEqualTo(this double firstNumber, double secondNumber, double tolerance = 0.01)
         {
