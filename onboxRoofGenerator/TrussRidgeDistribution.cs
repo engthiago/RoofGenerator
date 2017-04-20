@@ -12,7 +12,7 @@ using Autodesk.Revit.DB.Structure;
 namespace onboxRoofGenerator
 {
     [Transaction(TransactionMode.Manual)]
-    class AutoRun : IExternalCommand
+    class TrussRidgeDistribution : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -50,7 +50,7 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
-    class CreateTrussSelectingSupport : IExternalCommand
+    class TrussRidgeSelectingSupport : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -224,7 +224,7 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
-    class Test : IExternalCommand
+    class TrussRidgeTest : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -263,7 +263,7 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
-    class DetectSingleEdgeAndPlaceTrusses : IExternalCommand
+    class TrussRigdgePlace : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
