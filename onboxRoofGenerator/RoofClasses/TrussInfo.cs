@@ -23,7 +23,9 @@ namespace onboxRoofGenerator.RoofClasses
             FirstPoint = firstPoint;
             SecondPoint = secondPoint;
             Height = height;
-        }
+            TopChords = new CurveArray();
+            BottomChords = new CurveArray();
+    }
 
         private Line GetFootPrinLine()
         {
