@@ -80,6 +80,54 @@ namespace onboxRoofGenerator.RoofClasses
             }
         }
 
+        internal class StraightLinesAndFacesHipSelectionFilter : ISelectionFilter
+        {
+            private Document doc;
+
+            public StraightLinesAndFacesHipSelectionFilter(Document targetDocument)
+            {
+                doc = targetDocument;
+            }
+
+            public bool AllowElement(Element elem)
+            {
+                if (elem is FootPrintRoof)
+                    return true;
+                else
+                    return false;
+            }
+
+            public bool AllowReference(Reference reference, XYZ position)
+            {
+                if (doc == null)
+                    return false;
+
+                Element currentFootPrintElem = doc.GetElement(reference);
+
+                if (currentFootPrintElem == null)
+                    return false;
+
+                FootPrintRoof currentFootPrintRoof = currentFootPrintElem as FootPrintRoof;
+
+                if (currentFootPrintRoof == null)
+                    return false;
+
+                Edge currentEdge = Support.GetEdgeFromReference(reference, currentFootPrintRoof);
+
+                IList<PlanarFace> pfaces = new List<PlanarFace>();
+                Support.IsListOfPlanarFaces(HostObjectUtils.GetTopFaces(currentFootPrintRoof), currentFootPrintRoof, out pfaces);
+
+                EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, currentEdge.AsCurve(), pfaces);
+
+                System.Diagnostics.Debug.WriteLine(currentInfo.RoofLineType.ToString());
+
+                if (currentInfo.RoofLineType != RoofLineType.Hip)
+                    return false;
+
+                return true;
+            }
+        }
+
         internal class SupportsSelectionFilter : ISelectionFilter
         {
             XYZ Direction { get; set; }

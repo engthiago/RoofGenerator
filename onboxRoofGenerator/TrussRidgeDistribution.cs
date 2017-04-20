@@ -25,25 +25,35 @@ namespace onboxRoofGenerator
                 return Result.Failed;
             }
 
-            Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.StraightLinesAndFacesFootPrintRoofSelFilter(), "Selecione um telhado.");
-            FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
-
-            //TODO if the footprint contains something other than lines (straight lines) warn the user and exit
-            Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
-
-            if (tTypeElement == null)
+            try
             {
-                message = "Nenhum tipo de treliça foi encontrada no projeto, por favor, carregue um tipo e rode este comando novamente";
-                return Result.Failed;
+                Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.StraightLinesAndFacesFootPrintRoofSelFilter(), "Selecione um telhado.");
+                FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
+
+                //TODO if the footprint contains something other than lines (straight lines) warn the user and exit
+                Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
+
+                if (tTypeElement == null)
+                {
+                    message = "Nenhum tipo de treliça foi encontrada no projeto, por favor, carregue um tipo e rode este comando novamente";
+                    return Result.Failed;
+                }
+
+                TrussType tType = tTypeElement as TrussType;
+                Managers.TrussManager currentTrussManager = new Managers.TrussManager();
+                IList<RoofClasses.TrussInfo> currentTrussInfoList = currentTrussManager.CreateTrussesFromRoof(currentFootPrintRoof, tType);
+
+                TaskDialog tDialog = new TaskDialog("Trusses");
+                tDialog.MainInstruction = currentTrussInfoList.Count.ToString();
+                tDialog.Show();
             }
-
-            TrussType tType = tTypeElement as TrussType;
-            Managers.TrussManager currentTrussManager = new Managers.TrussManager();
-            IList<RoofClasses.TrussInfo> currentTrussInfoList = currentTrussManager.CreateTrussesFromRoof(currentFootPrintRoof, tType);
-
-            TaskDialog tDialog = new TaskDialog("Trusses");
-            tDialog.MainInstruction = currentTrussInfoList.Count.ToString();
-            tDialog.Show();
+            catch (Exception e)
+            {
+                if (!(e is Autodesk.Revit.Exceptions.OperationCanceledException))
+                {
+                    throw e;
+                }
+            }
 
             return Result.Succeeded;
         }
@@ -72,16 +82,13 @@ namespace onboxRoofGenerator
                 Reference currentReference = sel.PickObject(ObjectType.Edge, ridgeSelectionFilter);
 
                 FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
-                Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
+                RoofClasses.EdgeInfo currentRidgeInfo = Support.GetMostSimilarEdgeInfo(currentReference, doc);
 
-                IList<PlanarFace> pfaces = new List<PlanarFace>();
-                Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof)
-                    , currentFootPrintRoof, out pfaces);
-
-                IList<RoofClasses.EdgeInfo> currentEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
-
-                Curve currentCurve= Support.GetMostSimilarRidgeLine(edge.AsCurve(), currentEdgeInfoList);
-                RoofClasses.EdgeInfo currentRidgeInfo = Support.GetCurveInformation(currentFootPrintRoof, currentCurve, pfaces);
+                if (currentRidgeInfo == null)
+                {
+                    message = "Nenhuma linha inferior pode ser obtida a partir da seleção";
+                    return Result.Failed;
+                }
 
                 #region DEBUG ONLY
 #if DEBUG
@@ -116,19 +123,18 @@ namespace onboxRoofGenerator
 
                     //We can safely convert because the selection filter does not select anything that is not a curve locatated
                     Curve currentElementCurve = (currentTrussBaseElem.Location as LocationCurve).Curve;
-                    Line ridgeLine = currentCurve as Line;
 
-                    if (ridgeLine != null)
+                    if (currentRidgeLine != null)
                     {
                         if (currentElementCurve is Line)
                         {
                             Line currentSupportLine = currentElementCurve as Line;
                             double height = currentRidgeInfo.GetCurrentRoofHeight();
-                            ridgeLine = ridgeLine.Flatten(height);
+                            currentRidgeLine = currentRidgeLine.Flatten(height);
                             currentSupportLine = currentSupportLine.Flatten(height);
 
                             IntersectionResultArray iResutArr = new IntersectionResultArray();
-                            SetComparisonResult compResult = ridgeLine.Intersect(currentSupportLine, out iResutArr);
+                            SetComparisonResult compResult = currentRidgeLine.Intersect(currentSupportLine, out iResutArr);
 
                             if (iResutArr.Size == 1)
                             {
@@ -195,18 +201,9 @@ namespace onboxRoofGenerator
                 RoofClasses.TrussInfo currentTrussInfo = currentTrussManager.CreateTrussFromRidgeWithSupports(baseSupportPoint, currentRidgeInfo, tType, currentSupport0ElemLine, currentSupport1ElemLine);
 
                 #region DEBUG ONLY
+                
                 if (currentReference != null)
-                {
-#if DEBUG
-                    using (Transaction t = new Transaction(doc, "ReferencePoint"))
-                    {
-                        t.Start();
-                        FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
-                        doc.Create.NewFamilyInstance(baseSupportPoint, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-                        t.Commit();
-                    }
-#endif
-                }
+                    DEBUG.CreateDebugPoint(doc, baseSupportPoint);
 
                 #endregion
 
@@ -263,7 +260,7 @@ namespace onboxRoofGenerator
     }
 
     [Transaction(TransactionMode.Manual)]
-    class TrussRigdgePlace : IExternalCommand
+    class TrussRidgePlace : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -288,7 +285,7 @@ namespace onboxRoofGenerator
                 , currentFootPrintRoof, out pfaces);
 
             IList<RoofClasses.EdgeInfo> currentEdgeInfoList = Support.GetRoofEdgeInfoList(currentFootPrintRoof, false);
-            Curve currentCurve = Support.GetMostSimilarRidgeLine(edge.AsCurve(), currentEdgeInfoList);
+            Curve currentCurve = Support.GetMostSimilarCurve(edge.AsCurve(), currentEdgeInfoList);
 
             RoofClasses.EdgeInfo currentInfo = Support.GetCurveInformation(currentFootPrintRoof, currentCurve, pfaces);
             TaskDialog.Show("fac", currentInfo.RoofLineType.ToString());

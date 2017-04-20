@@ -502,7 +502,7 @@ namespace onboxRoofGenerator
             return resultingListOfEdgeInfo;
         }
 
-        static internal Curve GetMostSimilarRidgeLine(Curve targetCurve, IList<EdgeInfo> edgeInfoList)
+        static internal Curve GetMostSimilarCurve(Curve targetCurve, IList<EdgeInfo> edgeInfoList)
         {
             Curve edgeInfoToReturn = null;
             if (edgeInfoList == null)
@@ -516,12 +516,12 @@ namespace onboxRoofGenerator
             double minDistance = double.MaxValue;
             foreach (EdgeInfo currentEdgeInfo in edgeInfoList)
             {
-                if (currentEdgeInfo.RoofLineType != RoofLineType.Ridge && currentEdgeInfo.RoofLineType != RoofLineType.RidgeSinglePanel)
-                    continue;
-
                 Line currentEdgeInfoLine = currentEdgeInfo.Curve as Line;
 
                 if (currentEdgeInfoLine == null)
+                    continue;
+
+                if (!(edgeLine.ApproximateLength.IsAlmostEqualTo(currentEdgeInfoLine.ApproximateLength)))
                     continue;
 
                 if (!Math.Abs(edgeLine.Direction.DotProduct(currentEdgeInfoLine.Direction)).IsAlmostEqualTo(1))
@@ -537,6 +537,23 @@ namespace onboxRoofGenerator
             }
 
             return edgeInfoToReturn;
+        }
+
+        static internal EdgeInfo GetMostSimilarEdgeInfo(Reference currentReference, Document targetDoc)
+        {
+            FootPrintRoof currentFootPrintRoof = targetDoc.GetElement(currentReference) as FootPrintRoof;
+            Edge edge = Support.GetEdgeFromReference(currentReference, currentFootPrintRoof);
+
+            IList<PlanarFace> pfaces = new List<PlanarFace>();
+            Support.IsListOfPlanarFaces(HostObjectUtils.GetBottomFaces(currentFootPrintRoof)
+                , currentFootPrintRoof, out pfaces);
+
+            IList<RoofClasses.EdgeInfo> currentEdgeInfoList = GetRoofEdgeInfoList(currentFootPrintRoof, false);
+
+            Curve currentCurve = GetMostSimilarCurve(edge.AsCurve(), currentEdgeInfoList);
+            RoofClasses.EdgeInfo currentRidgeInfo = GetCurveInformation(currentFootPrintRoof, currentCurve, pfaces);
+
+            return currentRidgeInfo;
         }
     }
 
