@@ -34,7 +34,7 @@ namespace onboxRoofGenerator
             return Line.CreateBound(firstPoint, secondPoint);
         }
 
-        static internal XYZ GetFlattenIntersection(this Line targetLine, Line secondLine)
+        static internal XYZ GetFlattenIntersection(this Line targetLine, Line secondLine, bool MakeFirstLineInfinite = true, bool MakeSecondLineInfinite = true)
         {
             if (targetLine == null || secondLine == null)
                 return null;
@@ -42,7 +42,11 @@ namespace onboxRoofGenerator
             targetLine = targetLine.Flatten();
             secondLine = secondLine.Flatten();
 
-            targetLine.MakeUnbound();
+            if (MakeFirstLineInfinite)
+                targetLine.MakeUnbound();
+
+            if (MakeSecondLineInfinite)
+                secondLine.MakeUnbound();
 
             IntersectionResultArray iResultArr = null;
             targetLine.Intersect(secondLine, out iResultArr);
