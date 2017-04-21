@@ -184,7 +184,7 @@ namespace onboxRoofGenerator.RoofClasses
             double centerParameter = newHipLine.ComputeRawParameter(0.5);
             XYZ newLineTrussPosition = newHipLine.Evaluate(centerParameter + TRUSS_HIP_OFFSET, false);
 
-            DEBUG.CreateDebugPoint(currentEdgeInfo.CurrentRoof.Document, newLineTrussPosition);
+            //DEBUG.CreateDebugPoint(currentEdgeInfo.CurrentRoof.Document, newLineTrussPosition);
 
             IntersectionResultArray iResultArr = null;
             currentEdgeInfo.Curve.Intersect(Line.CreateUnbound(newLineTrussPosition, XYZ.BasisZ), out iResultArr);
@@ -193,7 +193,7 @@ namespace onboxRoofGenerator.RoofClasses
                 return trussInfoToReturn;
 
             currentPointOnHip = iResultArr.get_Item(0).XYZPoint;
-            DEBUG.CreateDebugPoint(currentEdgeInfo.CurrentRoof.Document, currentPointOnHip);
+            //DEBUG.CreateDebugPoint(currentEdgeInfo.CurrentRoof.Document, currentPointOnHip);
             ///////////////////////
 
 
