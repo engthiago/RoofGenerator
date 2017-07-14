@@ -9,11 +9,15 @@ using onboxRoofGenerator.RoofClasses;
 
 namespace onboxRoofGenerator.Managers
 {
-    class TrussManager
+    /// <summary>
+    /// Class responsable for dealing with creation and dristribution of trusses on Ridges
+    /// </summary>
+    class TrussRidgeManager
     {
+        //Distance from truss to truss, it will be initialized to ~8.2" or 2.5m
         double trussDistance;
 
-        public TrussManager(double targetTrussDistance = 8.2020997375)
+        public TrussRidgeManager(double targetTrussDistance = 8.2020997375)
         {
             trussDistance = targetTrussDistance;
         }
@@ -28,11 +32,11 @@ namespace onboxRoofGenerator.Managers
 
             currentRoofEdgeInfoList = Support.GetRoofEdgeInfoList(currentRoof, false);
 
-            if (currentRoof == null)
-                return currentRoofTrussList;
-
             Document doc = currentRoof.Document;
             if (doc == null)
+                return currentRoofTrussList;
+
+            if (currentRoofEdgeInfoList.Count == 0)
                 return currentRoofTrussList;
 
             using (Transaction t = new Transaction(doc, "Create Roof Trusses"))
@@ -148,6 +152,13 @@ namespace onboxRoofGenerator.Managers
             return currentTrussInfo;
         }
 
+        /// <summary>
+        /// Creates trusses along a specific ridge edge and stores them on a list of truss info
+        /// </summary>
+        /// <param name="currentRidgeEdgeInfo">The specific edge ridge to create trusses</param>
+        /// <param name="doc">The target document to create the trusses</param>
+        /// <param name="tType">The target truss type to be used on creation</param>
+        /// <returns>The list of info of the created trusses</returns>
         private IList<TrussInfo> CreateTrussInfoList(EdgeInfo currentRidgeEdgeInfo, Document doc, TrussType tType)
         {
             IList<TrussInfo> trussInfoList = new List<TrussInfo>();
@@ -192,6 +203,7 @@ namespace onboxRoofGenerator.Managers
                     {
 #if DEBUG
                         FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                        fs.Activate();
                         doc.Create.NewFamilyInstance(currentPointOnRidge, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 #endif
                     }

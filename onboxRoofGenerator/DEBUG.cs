@@ -23,6 +23,7 @@ namespace onboxRoofGenerator
                         t.Start();
 
                         FamilySymbol fs = e as FamilySymbol;
+                        fs.Activate();
 
                         if (fs != null)
                         {

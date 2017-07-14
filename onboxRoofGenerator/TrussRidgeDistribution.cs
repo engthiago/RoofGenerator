@@ -11,6 +11,9 @@ using Autodesk.Revit.DB.Structure;
 
 namespace onboxRoofGenerator
 {
+    /// <summary>
+    /// Command to create trusses for all Ridges on the selected Roof
+    /// </summary>
     [Transaction(TransactionMode.Manual)]
     class TrussRidgeDistribution : IExternalCommand
     {
@@ -27,11 +30,8 @@ namespace onboxRoofGenerator
 
             try
             {
-                Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.StraightLinesAndFacesFootPrintRoofSelFilter(), "Selecione um telhado.");
-                FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
-
-                //TODO if the footprint contains something other than lines (straight lines) warn the user and exit
                 Element tTypeElement = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).Where(fsy => fsy is TrussType).ToList().FirstOrDefault();
+                TrussType tType = tTypeElement as TrussType;
 
                 if (tTypeElement == null)
                 {
@@ -39,8 +39,10 @@ namespace onboxRoofGenerator
                     return Result.Failed;
                 }
 
-                TrussType tType = tTypeElement as TrussType;
-                Managers.TrussManager currentTrussManager = new Managers.TrussManager();
+                Reference currentReference = uidoc.Selection.PickObject(ObjectType.Element, new RoofClasses.SelectionFilters.StraightLinesAndFacesFootPrintRoofSelFilter(), "Selecione um telhado.");
+                FootPrintRoof currentFootPrintRoof = doc.GetElement(currentReference) as FootPrintRoof;
+
+                Managers.TrussRidgeManager currentTrussManager = new Managers.TrussRidgeManager();
                 IList<RoofClasses.TrussInfo> currentTrussInfoList = currentTrussManager.CreateTrussesFromRoof(currentFootPrintRoof, tType);
 
                 TaskDialog tDialog = new TaskDialog("Trusses");
@@ -156,7 +158,7 @@ namespace onboxRoofGenerator
                 }
 
 
-                Managers.TrussManager currentTrussManager = new Managers.TrussManager();
+                Managers.TrussRidgeManager currentTrussManager = new Managers.TrussRidgeManager();
 
                 Line currentSupport0ElemLine = null;
                 Line currentSupport1ElemLine = null;
@@ -249,6 +251,7 @@ namespace onboxRoofGenerator
                 t.Start();
 
                 FamilySymbol fs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_GenericModel).WhereElementIsElementType().Where(type => type.Name.Contains("DebugPoint")).FirstOrDefault() as FamilySymbol;
+                fs.Activate();
                 doc.Create.NewFamilyInstance((currentInfo.Curve as Line).Direction, fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                 doc.Create.NewFamilyInstance(((currentInfo.Curve as Line).Direction).Rotate(-90), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
                 doc.Create.NewFamilyInstance(((currentInfo.Curve as Line).Direction).Rotate(45), fs, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
@@ -299,7 +302,7 @@ namespace onboxRoofGenerator
             }
 
             TrussType tType = tTypeElement as TrussType;
-            Managers.TrussManager currentTrussManager = new Managers.TrussManager();
+            Managers.TrussRidgeManager currentTrussManager = new Managers.TrussRidgeManager();
             IList<RoofClasses.TrussInfo> currentTrussInfoList = currentTrussManager.CreateTrussesFromRidgeInfo(currentInfo, tType);
 
             TaskDialog tDialog = new TaskDialog("Trusses");

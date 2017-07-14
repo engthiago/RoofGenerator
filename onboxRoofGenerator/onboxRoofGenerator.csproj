@@ -90,7 +90,7 @@
     <Compile Include="TrussHipDistribution.cs" />
     <Compile Include="TrussRidgeDistribution.cs" />
     <Compile Include="Utils\Extension.cs" />
-    <Compile Include="Managers\TrussManager.cs" />
+    <Compile Include="Managers\TrussRidgeManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
