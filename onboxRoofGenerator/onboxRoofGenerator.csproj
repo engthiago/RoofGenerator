@@ -87,6 +87,7 @@
   <ItemGroup>
     <Compile Include="DEBUG.cs" />
     <Compile Include="Managers\TrussHipManager.cs" />
+    <Compile Include="TransientTestCommand.cs" />
     <Compile Include="TrussHipDistribution.cs" />
     <Compile Include="TrussRidgeDistribution.cs" />
     <Compile Include="Utils\Extension.cs" />
