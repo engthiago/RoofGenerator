@@ -12,6 +12,168 @@ namespace onboxRoofGenerator
     class Support
     {
 
+        static internal class ShortenRidge
+        {
+            static internal Line ShortenRidgeIfNecessary(Line currentRidgeWithSupports, IList<EdgeInfo> startConditions, IList<EdgeInfo> endConditions)
+            {
+                if (currentRidgeWithSupports == null)
+                    return null;
+
+                //TODO Change this to the max distance between Trusses
+                double maxDistance = 9;
+
+                Line newRidgeLine = currentRidgeWithSupports.Clone() as Line;
+
+                if (startConditions != null)
+                {
+                    if (startConditions.Count == 1 || startConditions.Count == 2)
+                    {
+                        EdgeInfo currentGableInfo = null;
+
+                        if (startConditions.Count == 1)
+                        {
+                            currentGableInfo = startConditions[0];
+                        }
+                        else
+                        {
+                            if (startConditions[0].RoofLineType == RoofLineType.Gable)
+                                currentGableInfo = startConditions[0];
+                            else if (startConditions[1].RoofLineType == RoofLineType.Gable)
+                                currentGableInfo = startConditions[1];
+                        }
+
+                        if (currentGableInfo != null)
+                        {
+                            XYZ startPoint = currentRidgeWithSupports.GetEndPoint(0);
+                            XYZ edgePointOnRoofBaseHeight = new XYZ(startPoint.X, startPoint.Y, currentGableInfo.GetCurrentRoofHeight());
+                            XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), maxDistance);
+                            XYZ newRidgeStartPoint = new XYZ(supportPoint.X, supportPoint.Y, startPoint.Z);
+
+                            newRidgeLine = Line.CreateBound(newRidgeStartPoint, newRidgeLine.GetEndPoint(1));
+                        }
+                    }
+                }
+
+                if (endConditions != null)
+                {
+                    if (endConditions.Count == 1 || endConditions.Count == 2)
+                    {
+                        EdgeInfo currentGableInfo = null;
+
+                        if (endConditions.Count == 1)
+                        {
+                            currentGableInfo = endConditions[0];
+                        }
+                        else
+                        {
+                            if (endConditions[0].RoofLineType == RoofLineType.Gable)
+                                currentGableInfo = endConditions[0];
+                            else if (endConditions[1].RoofLineType == RoofLineType.Gable)
+                                currentGableInfo = endConditions[1];
+                        }
+
+                        if (currentGableInfo != null)
+                        {
+                            XYZ endPoint = currentRidgeWithSupports.GetEndPoint(1);
+                            XYZ edgePointOnRoofBaseHeight = new XYZ(endPoint.X, endPoint.Y, currentGableInfo.GetCurrentRoofHeight());
+                            XYZ supportPoint = currentGableInfo.GetSupportPoint(edgePointOnRoofBaseHeight, currentRidgeWithSupports.Direction.Rotate(90), maxDistance);
+                            XYZ newRidgeEndPoint = new XYZ(supportPoint.X, supportPoint.Y, endPoint.Z);
+
+                            newRidgeLine = Line.CreateBound(newRidgeLine.GetEndPoint(0), newRidgeEndPoint);
+                        }
+                    }
+                }
+
+
+                if (startConditions != null && endConditions != null)
+                {
+                    bool canShortenBothEnds = true;
+                    bool canShortenStart = true;
+                    bool canShortenEnd = true;
+
+                    foreach (EdgeInfo currentStartCondition in startConditions)
+                    {
+                        if (currentStartCondition.RoofLineType == RoofLineType.Gable)
+                        {
+                            canShortenBothEnds = false;
+                            canShortenStart = false;
+                        }
+                    }
+
+                    foreach (EdgeInfo currentEndCondition in endConditions)
+                    {
+                        if (currentEndCondition.RoofLineType == RoofLineType.Gable)
+                        {
+                            canShortenBothEnds = false;
+                            canShortenEnd = false;
+                        }
+                    }
+
+                    double SETBACKAMOUNT = Utils.Utils.ConvertM.cmToFeet(20);
+
+                    if (canShortenBothEnds)
+                    {
+                        newRidgeLine = ShortenRidgeBySetBack(newRidgeLine, SETBACKAMOUNT);
+                    }
+                    else if (canShortenStart)
+                    {
+                        newRidgeLine = ShortenStartRidgeBySetBack(newRidgeLine, SETBACKAMOUNT);
+                    }
+                    else if (canShortenEnd)
+                    {
+                        newRidgeLine = ShortenEndRidgeBySetBack(newRidgeLine, SETBACKAMOUNT);
+                    }
+
+                }
+
+
+                return newRidgeLine;
+            }
+
+            static private Line ShortenRidgeBySetBack(Line currentRidgeLine, double amount)
+            {
+                Line currentRidgeToReturn = currentRidgeLine;
+
+                if (currentRidgeLine.ApproximateLength > ((amount * 2) + Utils.Utils.ConvertM.cmToFeet(3)))
+                {
+                    XYZ firstPoint = currentRidgeLine.GetEndPoint(0).Add(currentRidgeLine.Direction.Multiply(amount));
+                    XYZ secondPoint = currentRidgeLine.GetEndPoint(1).Add(currentRidgeLine.Direction.Negate().Multiply(amount));
+
+                    currentRidgeToReturn = Line.CreateBound(firstPoint, secondPoint);
+                }
+
+                return currentRidgeToReturn;
+            }
+
+            static private Line ShortenStartRidgeBySetBack(Line currentRidgeLine, double amount)
+            {
+                Line currentRidgeToReturn = currentRidgeLine;
+
+                if (currentRidgeLine.ApproximateLength > (amount + Utils.Utils.ConvertM.cmToFeet(1.5)))
+                {
+                    XYZ firstPoint = currentRidgeLine.GetEndPoint(0).Add(currentRidgeLine.Direction.Multiply(amount));
+
+                    currentRidgeToReturn = Line.CreateBound(firstPoint, currentRidgeToReturn.GetEndPoint(1));
+                }
+
+                return currentRidgeToReturn;
+            }
+
+            static private Line ShortenEndRidgeBySetBack(Line currentRidgeLine, double amount)
+            {
+                Line currentRidgeToReturn = currentRidgeLine;
+
+                if (currentRidgeLine.ApproximateLength > (amount + Utils.Utils.ConvertM.cmToFeet(1.5)))
+                {
+                    XYZ secondPoint = currentRidgeLine.GetEndPoint(1).Add(currentRidgeLine.Direction.Negate().Multiply(amount));
+
+                    currentRidgeToReturn = Line.CreateBound(currentRidgeToReturn.GetEndPoint(0), secondPoint);
+                }
+
+                return currentRidgeToReturn;
+            }
+        }
+
         static internal bool HasSameSlopes(FootPrintRoof targetRoof)
         {
             //Get the slope of the entire roof
