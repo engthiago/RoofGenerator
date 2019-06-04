@@ -3,4 +3,4 @@
 ----
 Initial code for creating roof tiles in Revit using Revit API
 
-Follow me at linkedin: https://www.linkedin.com/in/thiago-almeida-034a2931/
+Follow me on linkedin: https://www.linkedin.com/in/thiago-almeida-034a2931/
